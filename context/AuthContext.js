@@ -70,6 +70,7 @@ export const AuthProvider = ({ children }) => {
                     console.log('Push token saved successfully.');
                 } catch (error) {
                     console.error('Error saving push token:', error);
+                    // Alert.alert('Error', 'Failed to save push token');
                 }
             }
         };

@@ -23,7 +23,14 @@
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#e8eef5"
       },
+      "permissions": [
+        "NOTIFICATIONS"
+      ],
       "edgeToEdgeEnabled": true
+    },
+    "notification": {
+      "icon": "./assets/logo.png",
+      "color": "#4a90d9"
     },
     "web": {
       "favicon": "./assets/logo.png"

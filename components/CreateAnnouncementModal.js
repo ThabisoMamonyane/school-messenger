@@ -125,7 +125,9 @@ export default function CreateAnnouncementModal({ visible, onClose, schoolId, on
                             title: `📢 ${title}`,
                             body: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
                             data: { announcementId: data.id },
-                            badge: 1, // increments badge on some devices, or sets it
+                            badge: 1,
+                            channelId: 'default', // Critical for Android sound/vibration
+                            priority: 'high',     // Critical for Android heads-up display
                         }));
 
                         // Chunking for safety (Expo limits)
