@@ -3,6 +3,10 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { useIsFocused } from '@react-navigation/native';
 
 import SchoolDashboardScreen from '../screens/SchoolDashboardScreen';
 import AnnouncementsScreen from '../screens/AnnouncementsScreen';
@@ -15,6 +19,41 @@ const Tab = createBottomTabNavigator();
 export default function SchoolTabNavigator({ route }) {
     const { school, role } = route.params;
     const isParent = role === 'parent';
+    const { user } = useAuth();
+    const isFocused = useIsFocused();
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    const fetchUnreadCount = async () => {
+        if (!user) return;
+        try {
+            // Get total announcements count
+            const { count: totalCount, error: countError } = await supabase
+                .from('announcements')
+                .select('*', { count: 'exact', head: true })
+                .eq('school_id', school.id);
+
+            if (countError) throw countError;
+
+            // Get read count
+            const { count: readCount, error: readError } = await supabase
+                .from('announcement_reads')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id);
+
+            if (readError) throw readError;
+
+            const unread = (totalCount || 0) - (readCount || 0);
+            setUnreadCount(unread > 0 ? unread : 0);
+        } catch (error) {
+            console.error('Error fetching unread count:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (isFocused) {
+            fetchUnreadCount();
+        }
+    }, [isFocused, school.id]);
 
     return (
         <Tab.Navigator
@@ -82,6 +121,10 @@ export default function SchoolTabNavigator({ route }) {
                 name="Announcements"
                 component={AnnouncementsScreen}
                 initialParams={{ school, role }}
+                options={{
+                    tabBarBadge: unreadCount > 0 ? unreadCount : null,
+                    tabBarBadgeStyle: { backgroundColor: '#e53e3e', fontSize: 10, height: 16, minWidth: 16 },
+                }}
             />
             <Tab.Screen
                 name="Profile"

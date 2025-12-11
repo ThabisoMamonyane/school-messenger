@@ -95,20 +95,61 @@ export default function CreateAnnouncementModal({ visible, onClose, schoolId, on
             if (error) throw error;
 
             if (sendPush) {
+                // Fetch tokens for all school members
                 const { data: members, error: membersError } = await supabase
                     .from('school_members')
-                    .select('user_id')
+                    .select(`
+                        user_id,
+                        users:user_id (
+                            id
+                        )
+                    `)
                     .eq('school_id', schoolId);
 
                 if (!membersError && members) {
                     const userIds = members.map(m => m.user_id);
-                    await supabase.functions.invoke('send-push', {
-                        body: {
-                            user_ids: userIds,
+                    // Fetch tokens from profiles
+                    const { data: tokensData } = await supabase
+                        .from('profiles')
+                        .select('expo_push_token')
+                        .in('id', userIds)
+                        .not('expo_push_token', 'is', null);
+
+                    if (tokensData && tokensData.length > 0) {
+                        const pushTokens = tokensData.map(t => t.expo_push_token);
+
+                        // Send Push Notifications via Expo API
+                        const messages = pushTokens.map(token => ({
+                            to: token,
+                            sound: 'default',
                             title: `📢 ${title}`,
                             body: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
+                            data: { announcementId: data.id },
+                            badge: 1, // increments badge on some devices, or sets it
+                        }));
+
+                        // Chunking for safety (Expo limits)
+                        const chunks = [];
+                        for (let i = 0; i < messages.length; i += 100) {
+                            chunks.push(messages.slice(i, i + 100));
                         }
-                    });
+
+                        for (const chunk of chunks) {
+                            try {
+                                await fetch('https://exp.host/--/api/v2/push/send', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'Accept-encoding': 'gzip, deflate',
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify(chunk),
+                                });
+                            } catch (pushError) {
+                                console.error('Error sending push chunk:', pushError);
+                            }
+                        }
+                    }
                 }
             }
 

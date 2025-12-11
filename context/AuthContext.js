@@ -52,7 +52,30 @@ export const AuthProvider = ({ children }) => {
         });
 
         return () => subscription.unsubscribe();
+        return () => subscription.unsubscribe();
     }, []);
+
+    // Save Push Token to Database
+    useEffect(() => {
+        const updatePushToken = async () => {
+            if (user && expoPushToken) {
+                console.log('Saving push token to database...', expoPushToken);
+                try {
+                    const { error } = await supabase
+                        .from('profiles')
+                        .update({ expo_push_token: expoPushToken })
+                        .eq('id', user.id);
+
+                    if (error) throw error;
+                    console.log('Push token saved successfully.');
+                } catch (error) {
+                    console.error('Error saving push token:', error);
+                }
+            }
+        };
+
+        updatePushToken();
+    }, [user, expoPushToken]);
 
     const [passwordResetPending, setPasswordResetPending] = useState(false);
 
