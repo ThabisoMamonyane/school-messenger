@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -43,7 +44,11 @@ export default function SchoolTabNavigator({ route }) {
             if (readError) throw readError;
 
             const unread = (totalCount || 0) - (readCount || 0);
-            setUnreadCount(unread > 0 ? unread : 0);
+            const finalCount = unread > 0 ? unread : 0;
+            setUnreadCount(finalCount);
+
+            // Sync with App Icon Badge
+            Notifications.setBadgeCountAsync(finalCount);
         } catch (error) {
             console.error('Error fetching unread count:', error);
         }

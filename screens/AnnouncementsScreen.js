@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, RefreshControl, ActivityIndicator, LayoutAnimation, Platform, UIManager, StyleSheet } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useFocusEffect } from '@react-navigation/native';
@@ -60,9 +61,38 @@ export default function AnnouncementsScreen({ navigation, route }) {
         }
     };
 
+    // Update App Badge when list or reads change
+    useEffect(() => {
+        const unreadCount = announcements.length - readAnnouncementIds.size;
+        Notifications.setBadgeCountAsync(unreadCount > 0 ? unreadCount : 0);
+    }, [announcements, readAnnouncementIds]);
+
     useFocusEffect(
         useCallback(() => {
             fetchAnnouncements();
+
+            // Realtime: Listen for new announcements
+            const channel = supabase
+                .channel(`school_announcements:${school.id}`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'announcements',
+                        filter: `school_id=eq.${school.id}`,
+                    },
+                    (payload) => {
+                        console.log('New announcement received via realtime:', payload);
+                        // Trigger fetch to get full details (with author)
+                        fetchAnnouncements();
+                    }
+                )
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
         }, [school.id])
     );
 

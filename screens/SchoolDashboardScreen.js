@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +12,7 @@ export default function SchoolDashboardScreen({ route, navigation }) {
     const [allSchools, setAllSchools] = useState([]);
     const [myGroups, setMyGroups] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [errorMsg, setErrorMsg] = useState(null);
 
     const [unreadCount, setUnreadCount] = useState(0);
@@ -124,7 +125,15 @@ export default function SchoolDashboardScreen({ route, navigation }) {
         }, [user, school.id])
     );
 
-
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await Promise.all([
+            fetchDashboardStats(),
+            fetchMyGroups(),
+            fetchAllSchools()
+        ]);
+        setRefreshing(false);
+    };
 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
@@ -197,6 +206,9 @@ export default function SchoolDashboardScreen({ route, navigation }) {
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 100 }}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4a90d9" />
+                }
             >
 
                 {/* School Header */}

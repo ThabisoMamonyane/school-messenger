@@ -3,13 +3,10 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform }
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Notifications from 'expo-notifications';
-import { usePushNotifications } from '../hooks/usePushNotifications';
 
 export default function SchoolMenuScreen({ navigation, route }) {
     const { school, role } = route.params || {};
     const { signOut } = useAuth();
-    const { expoPushToken } = usePushNotifications(); // Get current token
 
     const handleSwitchSchool = () => {
         navigation.getParent().navigate('Home', { stayOnScreen: true });
@@ -21,43 +18,6 @@ export default function SchoolMenuScreen({ navigation, route }) {
         } catch (error) {
             console.error('Error signing out:', error);
             Alert.alert('Error', 'Failed to sign out');
-        }
-    };
-
-    const testLocalNotification = async () => {
-        try {
-            await Notifications.scheduleNotificationAsync({
-                content: {
-                    title: "🔔 Test Production Notification",
-                    body: "If you see this, the device channel is working!",
-                    sound: 'default',
-                    priority: Notifications.AndroidNotificationPriority.MAX,
-                },
-                trigger: null, // show immediately
-            });
-            Alert.alert('Sent', 'A local notification was sent.');
-        } catch (error) {
-            Alert.alert('Error', 'Failed to schedule local notification: ' + error.message);
-        }
-    };
-
-    const showPushToken = () => {
-        if (expoPushToken) {
-            Alert.alert(
-                'Production Push Token',
-                expoPushToken,
-                [
-                    { text: 'OK' },
-                    {
-                        text: 'Copy',
-                        onPress: () => {
-                            console.log('Token:', expoPushToken);
-                        }
-                    }
-                ]
-            );
-        } else {
-            Alert.alert('No Token', 'This device does not have a push token yet. (Is permission granted?)');
         }
     };
 
@@ -134,37 +94,6 @@ export default function SchoolMenuScreen({ navigation, route }) {
                     <MenuItem
                         icon="help-circle-outline"
                         iconColor="#6c5ce7"
-                        iconBg="rgba(108, 92, 231, 0.15)"
-                        title="Technical Support"
-                        onPress={() => navigation.navigate('TechnicalSupport')}
-                    />
-                </View>
-
-                {/* DEBUG SECTION (TEMPORARY FOR DIAGNOSTICS) */}
-                <View style={{ marginTop: 24, padding: 16, backgroundColor: '#fff', borderRadius: 12, borderWidth: 2, borderColor: '#f56565' }}>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#f56565', marginBottom: 8, textTransform: 'uppercase' }}>Diagnostics</Text>
-
-                    <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={testLocalNotification}>
-                        <View style={[styles.menuIconContainer, { backgroundColor: '#fed7e2' }]}>
-                            <Ionicons name="notifications" size={22} color="#d53f8c" />
-                        </View>
-                        <Text style={styles.menuItemText}>Test Local Notification</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={showPushToken}>
-                        <View style={[styles.menuIconContainer, { backgroundColor: '#bee3f8' }]}>
-                            <Ionicons name="code" size={22} color="#3182ce" />
-                        </View>
-                        <Text style={styles.menuItemText}>Show Production Token</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Sign Out */}
-                <View style={styles.section}>
-                    <MenuItem
-                        icon="log-out-outline"
-                        iconColor="#ff6b6b"
-                        iconBg="rgba(255, 107, 107, 0.15)"
                         title="Sign Out"
                         onPress={handleSignOut}
                         danger
