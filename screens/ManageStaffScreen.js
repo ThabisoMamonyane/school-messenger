@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, FlatList, Modal, A
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
+import ResponsiveScreen from '../components/ResponsiveScreen';
 
 export default function ManageStaffScreen({ navigation, route }) {
     const { schoolId, schoolName } = route.params;
@@ -136,38 +137,40 @@ export default function ManageStaffScreen({ navigation, route }) {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonIcon}>
-                    <Ionicons name="chevron-back" size={28} color="#4a90d9" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Manage Staff</Text>
-                <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addButtonSmall}>
-                    <Ionicons name="add" size={24} color="#ffffff" />
-                </TouchableOpacity>
-            </View>
+            <ResponsiveScreen maxWidth={800}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonIcon}>
+                        <Ionicons name="chevron-back" size={28} color="#4a90d9" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Manage Staff</Text>
+                    <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addButtonSmall}>
+                        <Ionicons name="add" size={24} color="#ffffff" />
+                    </TouchableOpacity>
+                </View>
 
-            <View style={styles.content}>
-                <Text style={styles.schoolLabel}>{schoolName}</Text>
+                <View style={styles.content}>
+                    <Text style={styles.schoolLabel}>{schoolName}</Text>
 
-                {loading ? (
-                    <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
-                ) : staff.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <View style={styles.emptyIcon}>
-                            <Ionicons name="people-outline" size={48} color="#a3b1c6" />
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
+                    ) : staff.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <View style={styles.emptyIcon}>
+                                <Ionicons name="people-outline" size={48} color="#a3b1c6" />
+                            </View>
+                            <Text style={styles.emptyText}>No staff members yet.</Text>
                         </View>
-                        <Text style={styles.emptyText}>No staff members yet.</Text>
-                    </View>
-                ) : (
-                    <FlatList
-                        data={staff}
-                        renderItem={renderStaffItem}
-                        keyExtractor={item => item.id}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{ paddingBottom: 20 }}
-                    />
-                )}
-            </View>
+                    ) : (
+                        <FlatList
+                            data={staff}
+                            renderItem={renderStaffItem}
+                            keyExtractor={item => item.id}
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{ paddingBottom: 20 }}
+                        />
+                    )}
+                </View>
+            </ResponsiveScreen>
 
             {/* Add Staff Modal */}
             <Modal

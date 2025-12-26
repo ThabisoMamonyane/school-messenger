@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import ResponsiveScreen from '../components/ResponsiveScreen';
 
 export default function TechnicalSupportScreen({ navigation }) {
     const { user, profile } = useAuth();
@@ -71,144 +72,146 @@ export default function TechnicalSupportScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
-            >
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Ionicons name="chevron-back" size={28} color="#4a90d9" />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Technical Support</Text>
-                    <View style={{ width: 28 }} />
-                </View>
-
-                <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                    {/* Info Card */}
-                    <View style={styles.infoCard}>
-                        <View style={styles.infoIcon}>
-                            <Ionicons name="help-buoy-outline" size={28} color="#4a90d9" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.infoTitle}>Need Help?</Text>
-                            <Text style={styles.infoText}>
-                                Submit a support ticket and our team will assist you as soon as possible.
-                            </Text>
-                        </View>
+            <ResponsiveScreen maxWidth={800}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1 }}
+                >
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                            <Ionicons name="chevron-back" size={28} color="#4a90d9" />
+                        </TouchableOpacity>
+                        <Text style={styles.headerTitle}>Technical Support</Text>
+                        <View style={{ width: 28 }} />
                     </View>
 
-                    {/* Issue Type Selection */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Issue Type</Text>
-                        <View style={styles.issueTypeGrid}>
-                            {issueTypes.map((type) => (
-                                <TouchableOpacity
-                                    key={type.id}
-                                    style={[
-                                        styles.issueTypeButton,
-                                        issueType === type.id && styles.issueTypeButtonActive
-                                    ]}
-                                    onPress={() => setIssueType(type.id)}
-                                    activeOpacity={0.7}
-                                >
-                                    <Ionicons
-                                        name={type.icon}
-                                        size={24}
-                                        color={issueType === type.id ? '#ffffff' : '#4a90d9'}
-                                    />
-                                    <Text style={[
-                                        styles.issueTypeText,
-                                        issueType === type.id && styles.issueTypeTextActive
-                                    ]}>
-                                        {type.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                    <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                        {/* Info Card */}
+                        <View style={styles.infoCard}>
+                            <View style={styles.infoIcon}>
+                                <Ionicons name="help-buoy-outline" size={28} color="#4a90d9" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.infoTitle}>Need Help?</Text>
+                                <Text style={styles.infoText}>
+                                    Submit a support ticket and our team will assist you as soon as possible.
+                                </Text>
+                            </View>
                         </View>
-                    </View>
 
-                    {/* Subject */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>Subject</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Brief summary of your issue"
-                            placeholderTextColor="#a0aec0"
-                            value={subject}
-                            onChangeText={setSubject}
-                        />
-                    </View>
-
-                    {/* Description */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>Description</Text>
-                        <TextInput
-                            style={styles.textArea}
-                            placeholder="Please describe your issue in detail. Include any error messages, steps to reproduce, or relevant information..."
-                            placeholderTextColor="#a0aec0"
-                            value={description}
-                            onChangeText={setDescription}
-                            multiline
-                            textAlignVertical="top"
-                        />
-                    </View>
-
-                    {/* Submit Button */}
-                    <TouchableOpacity
-                        style={styles.submitButton}
-                        onPress={handleSubmit}
-                        disabled={loading}
-                        activeOpacity={0.8}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="white" />
-                        ) : (
-                            <>
-                                <Ionicons name="send-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
-                                <Text style={styles.submitButtonText}>Submit Ticket</Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-
-                    {/* Divider */}
-                    <View style={styles.divider}>
-                        <View style={styles.dividerLine} />
-                        <Text style={styles.dividerText}>or</Text>
-                        <View style={styles.dividerLine} />
-                    </View>
-
-                    {/* Email Support Option */}
-                    <TouchableOpacity
-                        style={styles.emailButton}
-                        onPress={handleEmailSupport}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons name="mail-outline" size={20} color="#4a90d9" style={{ marginRight: 8 }} />
-                        <Text style={styles.emailButtonText}>Email Us Directly</Text>
-                    </TouchableOpacity>
-
-                    {/* FAQ Section */}
-                    <View style={styles.faqSection}>
-                        <Text style={styles.faqTitle}>Frequently Asked Questions</Text>
-
-                        <View style={styles.faqItem}>
-                            <Ionicons name="chevron-forward" size={16} color="#4a90d9" />
-                            <Text style={styles.faqText}>How do I join a school?</Text>
+                        {/* Issue Type Selection */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Issue Type</Text>
+                            <View style={styles.issueTypeGrid}>
+                                {issueTypes.map((type) => (
+                                    <TouchableOpacity
+                                        key={type.id}
+                                        style={[
+                                            styles.issueTypeButton,
+                                            issueType === type.id && styles.issueTypeButtonActive
+                                        ]}
+                                        onPress={() => setIssueType(type.id)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Ionicons
+                                            name={type.icon}
+                                            size={24}
+                                            color={issueType === type.id ? '#ffffff' : '#4a90d9'}
+                                        />
+                                        <Text style={[
+                                            styles.issueTypeText,
+                                            issueType === type.id && styles.issueTypeTextActive
+                                        ]}>
+                                            {type.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
-                        <View style={styles.faqItem}>
-                            <Ionicons name="chevron-forward" size={16} color="#4a90d9" />
-                            <Text style={styles.faqText}>How do I reset my password?</Text>
-                        </View>
-                        <View style={styles.faqItem}>
-                            <Ionicons name="chevron-forward" size={16} color="#4a90d9" />
-                            <Text style={styles.faqText}>Why am I not receiving notifications?</Text>
-                        </View>
-                    </View>
 
-                    <View style={{ height: 40 }} />
-                </ScrollView>
-            </KeyboardAvoidingView>
+                        {/* Subject */}
+                        <View style={styles.section}>
+                            <Text style={styles.label}>Subject</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Brief summary of your issue"
+                                placeholderTextColor="#a0aec0"
+                                value={subject}
+                                onChangeText={setSubject}
+                            />
+                        </View>
+
+                        {/* Description */}
+                        <View style={styles.section}>
+                            <Text style={styles.label}>Description</Text>
+                            <TextInput
+                                style={styles.textArea}
+                                placeholder="Please describe your issue in detail. Include any error messages, steps to reproduce, or relevant information..."
+                                placeholderTextColor="#a0aec0"
+                                value={description}
+                                onChangeText={setDescription}
+                                multiline
+                                textAlignVertical="top"
+                            />
+                        </View>
+
+                        {/* Submit Button */}
+                        <TouchableOpacity
+                            style={styles.submitButton}
+                            onPress={handleSubmit}
+                            disabled={loading}
+                            activeOpacity={0.8}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="white" />
+                            ) : (
+                                <>
+                                    <Ionicons name="send-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                                    <Text style={styles.submitButtonText}>Submit Ticket</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+
+                        {/* Divider */}
+                        <View style={styles.divider}>
+                            <View style={styles.dividerLine} />
+                            <Text style={styles.dividerText}>or</Text>
+                            <View style={styles.dividerLine} />
+                        </View>
+
+                        {/* Email Support Option */}
+                        <TouchableOpacity
+                            style={styles.emailButton}
+                            onPress={handleEmailSupport}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="mail-outline" size={20} color="#4a90d9" style={{ marginRight: 8 }} />
+                            <Text style={styles.emailButtonText}>Email Us Directly</Text>
+                        </TouchableOpacity>
+
+                        {/* FAQ Section */}
+                        <View style={styles.faqSection}>
+                            <Text style={styles.faqTitle}>Frequently Asked Questions</Text>
+
+                            <View style={styles.faqItem}>
+                                <Ionicons name="chevron-forward" size={16} color="#4a90d9" />
+                                <Text style={styles.faqText}>How do I join a school?</Text>
+                            </View>
+                            <View style={styles.faqItem}>
+                                <Ionicons name="chevron-forward" size={16} color="#4a90d9" />
+                                <Text style={styles.faqText}>How do I reset my password?</Text>
+                            </View>
+                            <View style={styles.faqItem}>
+                                <Ionicons name="chevron-forward" size={16} color="#4a90d9" />
+                                <Text style={styles.faqText}>Why am I not receiving notifications?</Text>
+                            </View>
+                        </View>
+
+                        <View style={{ height: 40 }} />
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </ResponsiveScreen>
         </SafeAreaView>
     );
 }
@@ -342,11 +345,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#4a90d9',
         paddingVertical: 16,
         borderRadius: 16,
-        shadowColor: '#3a7bc8',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 10,
-        elevation: 6,
     },
     submitButtonText: {
         color: '#ffffff',

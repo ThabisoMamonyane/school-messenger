@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import ResponsiveScreen from '../components/ResponsiveScreen';
 
 if (Platform.OS === 'android') {
     if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -13,6 +15,7 @@ if (Platform.OS === 'android') {
 
 export default function FindSchoolsScreen({ navigation }) {
     const { user } = useAuth();
+    const { colors, isDarkMode } = useTheme();
     const [schools, setSchools] = useState([]);
     const [filteredSchools, setFilteredSchools] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -121,7 +124,7 @@ export default function FindSchoolsScreen({ navigation }) {
 
         return (
             <TouchableOpacity
-                style={styles.schoolCard}
+                style={[styles.schoolCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => toggleExpand(item.id)}
                 activeOpacity={0.7}
             >
@@ -134,14 +137,14 @@ export default function FindSchoolsScreen({ navigation }) {
                             resizeMode="cover"
                         />
                     ) : (
-                        <View style={styles.schoolBadgePlaceholder}>
-                            <Ionicons name="school" size={20} color="#4a90d9" />
+                        <View style={[styles.schoolBadgePlaceholder, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(74, 144, 217, 0.12)' }]}>
+                            <Ionicons name="school" size={20} color={colors.primary} />
                         </View>
                     )}
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.schoolName}>{item.name}</Text>
-                        <Text style={styles.schoolAddress}>{item.address}</Text>
-                        <Text style={styles.schoolProvince}>{item.province}</Text>
+                        <Text style={[styles.schoolName, { color: colors.text }]}>{item.name}</Text>
+                        <Text style={[styles.schoolAddress, { color: colors.textLight }]}>{item.address}</Text>
+                        <Text style={[styles.schoolProvince, { color: colors.textMuted }]}>{item.province}</Text>
                     </View>
                     {isJoined && (
                         <View style={styles.joinedBadge}>
@@ -151,12 +154,12 @@ export default function FindSchoolsScreen({ navigation }) {
                     <Ionicons
                         name={isExpanded ? "chevron-up" : "chevron-down"}
                         size={20}
-                        color="#a3b1c6"
+                        color={colors.textMuted}
                     />
                 </View>
 
                 {isExpanded && (
-                    <View style={styles.expandedContent}>
+                    <View style={[styles.expandedContent, { borderTopColor: colors.border }]}>
                         <View style={styles.schoolDetails}>
                             {item.avatar_url ? (
                                 <Image
@@ -165,25 +168,25 @@ export default function FindSchoolsScreen({ navigation }) {
                                     resizeMode="cover"
                                 />
                             ) : (
-                                <View style={styles.schoolImagePlaceholder}>
-                                    <Ionicons name="school-outline" size={32} color="#4a90d9" />
+                                <View style={[styles.schoolImagePlaceholder, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(74, 144, 217, 0.1)' }]}>
+                                    <Ionicons name="school-outline" size={32} color={colors.primary} />
                                 </View>
                             )}
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.schoolDescription}>
+                                <Text style={[styles.schoolDescription, { color: colors.textLight }]}>
                                     {item.contact_info?.description || "No description available."}
                                 </Text>
                                 {item.contact_info?.email && (
                                     <View style={styles.emailRow}>
-                                        <Ionicons name="mail-outline" size={14} color="#718096" style={{ marginRight: 4 }} />
-                                        <Text style={styles.emailText}>{item.contact_info.email}</Text>
+                                        <Ionicons name="mail-outline" size={14} color={colors.textMuted} style={{ marginRight: 4 }} />
+                                        <Text style={[styles.emailText, { color: colors.textMuted }]}>{item.contact_info.email}</Text>
                                     </View>
                                 )}
                             </View>
                         </View>
 
                         <TouchableOpacity
-                            style={[styles.joinButton, isJoined && styles.joinedButton]}
+                            style={[styles.joinButton, { backgroundColor: colors.primary }, isJoined && styles.joinedButton]}
                             onPress={() => handleJoinSchool(item.id, item.name)}
                             disabled={isJoined || isJoining}
                             activeOpacity={0.8}
@@ -206,66 +209,68 @@ export default function FindSchoolsScreen({ navigation }) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
-            >
-                <View style={styles.content}>
-                    {/* Header */}
-                    <TouchableOpacity
-                        onPress={() => navigation.goBack()}
-                        style={styles.backButton}
-                    >
-                        <Ionicons name="chevron-back" size={24} color="#4a90d9" />
-                        <Text style={styles.backText}>Back</Text>
-                    </TouchableOpacity>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <ResponsiveScreen maxWidth={800}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1 }}
+                >
+                    <View style={styles.content}>
+                        {/* Header */}
+                        <TouchableOpacity
+                            onPress={() => navigation.goBack()}
+                            style={styles.backButton}
+                        >
+                            <Ionicons name="chevron-back" size={24} color={colors.primary} />
+                            <Text style={[styles.backText, { color: colors.primary }]}>Back</Text>
+                        </TouchableOpacity>
 
-                    <View style={styles.headerInfo}>
-                        <Text style={styles.title}>Find Schools</Text>
-                        <Text style={styles.subtitle}>Search and join schools to stay connected</Text>
-                    </View>
+                        <View style={styles.headerInfo}>
+                            <Text style={[styles.title, { color: colors.text }]}>Find Schools</Text>
+                            <Text style={[styles.subtitle, { color: colors.textMuted }]}>Search and join schools to stay connected</Text>
+                        </View>
 
-                    {/* Search */}
-                    <View style={styles.searchContainer}>
-                        <Ionicons name="search-outline" size={20} color="#718096" style={{ marginRight: 10 }} />
-                        <TextInput
-                            style={styles.searchInput}
-                            placeholder="Search by name, address, or province..."
-                            placeholderTextColor="#a0aec0"
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                        />
-                        {searchQuery.length > 0 && (
-                            <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <Ionicons name="close-circle" size={20} color="#a3b1c6" />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-
-                    {loading ? (
-                        <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
-                    ) : filteredSchools.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <View style={styles.emptyIcon}>
-                                <Ionicons name="school-outline" size={48} color="#a3b1c6" />
-                            </View>
-                            <Text style={styles.emptyText}>No schools found</Text>
-                            {searchQuery && (
-                                <Text style={styles.emptyHint}>Try a different search term</Text>
+                        {/* Search */}
+                        <View style={[styles.searchContainer, { backgroundColor: colors.input, borderColor: colors.border }]}>
+                            <Ionicons name="search-outline" size={20} color={colors.textMuted} style={{ marginRight: 10 }} />
+                            <TextInput
+                                style={[styles.searchInput, { color: colors.text }]}
+                                placeholder="Search by name, address, or province..."
+                                placeholderTextColor={colors.textMuted}
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                    <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                                </TouchableOpacity>
                             )}
                         </View>
-                    ) : (
-                        <FlatList
-                            data={filteredSchools}
-                            renderItem={renderSchoolItem}
-                            keyExtractor={item => item.id}
-                            showsVerticalScrollIndicator={false}
-                            contentContainerStyle={{ paddingBottom: 40 }}
-                        />
-                    )}
-                </View>
-            </KeyboardAvoidingView>
+
+                        {loading ? (
+                            <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+                        ) : filteredSchools.length === 0 ? (
+                            <View style={styles.emptyState}>
+                                <View style={[styles.emptyIcon, { backgroundColor: colors.surface }]}>
+                                    <Ionicons name="school-outline" size={48} color={colors.textMuted} />
+                                </View>
+                                <Text style={[styles.emptyText, { color: colors.textMuted }]}>No schools found</Text>
+                                {searchQuery && (
+                                    <Text style={[styles.emptyHint, { color: colors.textMuted, opacity: 0.7 }]}>Try a different search term</Text>
+                                )}
+                            </View>
+                        ) : (
+                            <FlatList
+                                data={filteredSchools}
+                                renderItem={renderSchoolItem}
+                                keyExtractor={item => item.id}
+                                showsVerticalScrollIndicator={false}
+                                contentContainerStyle={{ paddingBottom: 40 }}
+                            />
+                        )}
+                    </View>
+                </KeyboardAvoidingView>
+            </ResponsiveScreen>
         </SafeAreaView>
     );
 }
@@ -273,7 +278,6 @@ export default function FindSchoolsScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#e8eef5',
     },
     content: {
         flex: 1,
@@ -311,10 +315,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 14,
         marginBottom: 20,
-        shadowColor: '#a3b1c6',
-        shadowOffset: { width: -3, height: -3 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.5)',
     },
@@ -328,11 +328,6 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         padding: 16,
         marginBottom: 12,
-        shadowColor: '#a3b1c6',
-        shadowOffset: { width: 5, height: 5 },
-        shadowOpacity: 0.25,
-        shadowRadius: 10,
-        elevation: 4,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.8)',
     },
@@ -417,11 +412,6 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         borderRadius: 14,
         alignItems: 'center',
-        shadowColor: '#3a7bc8',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
     },
     joinedButton: {
         backgroundColor: 'rgba(0, 184, 148, 0.1)',

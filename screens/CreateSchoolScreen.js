@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import ResponsiveScreen from '../components/ResponsiveScreen';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
@@ -45,15 +46,20 @@ export default function CreateSchoolScreen({ navigation }) {
                     const fileName = `pending-${user.id}-${Date.now()}.${fileExt}`;
                     const filePath = `${fileName}`;
 
-                    const base64 = await FileSystem.readAsStringAsync(image.uri, {
-                        encoding: 'base64',
-                    });
-
-                    const arrayBuffer = decode(base64);
+                    let fileBody;
+                    if (Platform.OS === 'web') {
+                        const response = await fetch(image.uri);
+                        fileBody = await response.blob();
+                    } else {
+                        const base64 = await FileSystem.readAsStringAsync(image.uri, {
+                            encoding: 'base64',
+                        });
+                        fileBody = decode(base64);
+                    }
 
                     const { error: uploadError } = await supabase.storage
                         .from('school-avatars')
-                        .upload(filePath, arrayBuffer, {
+                        .upload(filePath, fileBody, {
                             contentType: `image/${fileExt}`,
                             upsert: true
                         });
@@ -117,139 +123,141 @@ export default function CreateSchoolScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 100}
-                style={{ flex: 1 }}
-            >
-                <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                    {/* Header */}
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Ionicons name="chevron-back" size={24} color="#4a90d9" />
-                        <Text style={styles.backText}>Back</Text>
-                    </TouchableOpacity>
+            <ResponsiveScreen maxWidth={600}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 100}
+                    style={{ flex: 1 }}
+                >
+                    <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                        {/* Header */}
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                            <Ionicons name="chevron-back" size={24} color="#4a90d9" />
+                            <Text style={styles.backText}>Back</Text>
+                        </TouchableOpacity>
 
-                    <View style={styles.headerSection}>
-                        <Text style={styles.title}>Register Your School</Text>
-                        <Text style={styles.subtitle}>
-                            Fill out the details below to begin the registration process.
-                        </Text>
-                    </View>
-
-                    <View style={{ gap: 16 }}>
-                        <View>
-                            <Text style={styles.label}>School Name*</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Enter school name"
-                                placeholderTextColor="#a0aec0"
-                                value={name}
-                                onChangeText={setName}
-                            />
+                        <View style={styles.headerSection}>
+                            <Text style={styles.title}>Register Your School</Text>
+                            <Text style={styles.subtitle}>
+                                Fill out the details below to begin the registration process.
+                            </Text>
                         </View>
 
-                        <View>
-                            <Text style={styles.label}>Address*</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Enter school address"
-                                placeholderTextColor="#a0aec0"
-                                value={address}
-                                onChangeText={setAddress}
-                            />
-                        </View>
-
-                        <View>
-                            <Text style={styles.label}>Province/State*</Text>
-                            <View style={styles.selectInput}>
+                        <View style={{ gap: 16 }}>
+                            <View>
+                                <Text style={styles.label}>School Name*</Text>
                                 <TextInput
-                                    style={{ flex: 1, fontSize: 16, color: '#2d3748' }}
-                                    placeholder="Select Province/State"
+                                    style={styles.input}
+                                    placeholder="Enter school name"
                                     placeholderTextColor="#a0aec0"
-                                    value={province}
-                                    onChangeText={setProvince}
+                                    value={name}
+                                    onChangeText={setName}
                                 />
-                                <Ionicons name="chevron-down" size={20} color="#a3b1c6" />
                             </View>
-                        </View>
 
-                        <View>
-                            <Text style={styles.label}>Contact Email*</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="admin@school.com"
-                                placeholderTextColor="#a0aec0"
-                                value={contactEmail}
-                                onChangeText={setContactEmail}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                            />
-                        </View>
+                            <View>
+                                <Text style={styles.label}>Address*</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Enter school address"
+                                    placeholderTextColor="#a0aec0"
+                                    value={address}
+                                    onChangeText={setAddress}
+                                />
+                            </View>
 
-                        {/* Logo Upload */}
-                        <View>
-                            <Text style={styles.label}>School Logo</Text>
+                            <View>
+                                <Text style={styles.label}>Province/State*</Text>
+                                <View style={styles.selectInput}>
+                                    <TextInput
+                                        style={{ flex: 1, fontSize: 16, color: '#2d3748' }}
+                                        placeholder="Select Province/State"
+                                        placeholderTextColor="#a0aec0"
+                                        value={province}
+                                        onChangeText={setProvince}
+                                    />
+                                    <Ionicons name="chevron-down" size={20} color="#a3b1c6" />
+                                </View>
+                            </View>
+
+                            <View>
+                                <Text style={styles.label}>Contact Email*</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="admin@school.com"
+                                    placeholderTextColor="#a0aec0"
+                                    value={contactEmail}
+                                    onChangeText={setContactEmail}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                />
+                            </View>
+
+                            {/* Logo Upload */}
+                            <View>
+                                <Text style={styles.label}>School Logo</Text>
+                                <TouchableOpacity
+                                    style={styles.uploadArea}
+                                    onPress={handleLogoUpload}
+                                    disabled={uploadingLogo}
+                                    activeOpacity={0.7}
+                                >
+                                    {uploadingLogo ? (
+                                        <>
+                                            <ActivityIndicator size="large" color="#4a90d9" style={{ marginBottom: 8 }} />
+                                            <Text style={styles.uploadText}>Uploading logo...</Text>
+                                        </>
+                                    ) : logoUri ? (
+                                        <>
+                                            <Image
+                                                source={{ uri: logoUri }}
+                                                style={styles.logoPreview}
+                                                resizeMode="cover"
+                                            />
+                                            <Text style={styles.uploadText}>Tap to change logo</Text>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Ionicons name="cloud-upload-outline" size={40} color="#4a90d9" style={{ marginBottom: 8 }} />
+                                            <Text style={styles.uploadText}>Click to upload school logo</Text>
+                                            <Text style={styles.uploadHint}>PNG, JPG up to 5MB</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Description */}
+                            <View>
+                                <Text style={styles.label}>School Description</Text>
+                                <TextInput
+                                    style={styles.textArea}
+                                    placeholder="Tell us about your school..."
+                                    placeholderTextColor="#a0aec0"
+                                    value={description}
+                                    onChangeText={setDescription}
+                                    multiline
+                                    textAlignVertical="top"
+                                />
+                            </View>
+
                             <TouchableOpacity
-                                style={styles.uploadArea}
-                                onPress={handleLogoUpload}
-                                disabled={uploadingLogo}
-                                activeOpacity={0.7}
+                                style={styles.submitButton}
+                                onPress={handleSubmit}
+                                disabled={loading}
+                                activeOpacity={0.8}
                             >
-                                {uploadingLogo ? (
-                                    <>
-                                        <ActivityIndicator size="large" color="#4a90d9" style={{ marginBottom: 8 }} />
-                                        <Text style={styles.uploadText}>Uploading logo...</Text>
-                                    </>
-                                ) : logoUri ? (
-                                    <>
-                                        <Image
-                                            source={{ uri: logoUri }}
-                                            style={styles.logoPreview}
-                                            resizeMode="cover"
-                                        />
-                                        <Text style={styles.uploadText}>Tap to change logo</Text>
-                                    </>
+                                {loading ? (
+                                    <ActivityIndicator color="white" />
                                 ) : (
-                                    <>
-                                        <Ionicons name="cloud-upload-outline" size={40} color="#4a90d9" style={{ marginBottom: 8 }} />
-                                        <Text style={styles.uploadText}>Click to upload school logo</Text>
-                                        <Text style={styles.uploadHint}>PNG, JPG up to 5MB</Text>
-                                    </>
+                                    <Text style={styles.submitButtonText}>Submit Request</Text>
                                 )}
                             </TouchableOpacity>
                         </View>
 
-                        {/* Description */}
-                        <View>
-                            <Text style={styles.label}>School Description</Text>
-                            <TextInput
-                                style={styles.textArea}
-                                placeholder="Tell us about your school..."
-                                placeholderTextColor="#a0aec0"
-                                value={description}
-                                onChangeText={setDescription}
-                                multiline
-                                textAlignVertical="top"
-                            />
-                        </View>
-
-                        <TouchableOpacity
-                            style={styles.submitButton}
-                            onPress={handleSubmit}
-                            disabled={loading}
-                            activeOpacity={0.8}
-                        >
-                            {loading ? (
-                                <ActivityIndicator color="white" />
-                            ) : (
-                                <Text style={styles.submitButtonText}>Submit Request</Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={{ height: 40 }} />
-                </ScrollView>
-            </KeyboardAvoidingView>
+                        <View style={{ height: 40 }} />
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </ResponsiveScreen>
         </SafeAreaView>
     );
 }

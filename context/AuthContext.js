@@ -162,6 +162,21 @@ export const AuthProvider = ({ children }) => {
                 redirectTo: redirectUrl,
             });
         },
+        deleteAccount: async () => {
+            if (!user) return;
+
+            // Call the secure database function to delete user from auth.users (and profile via cascading/explicit delete)
+            const { error } = await supabase.rpc('delete_own_account');
+
+            if (error) {
+                console.error('Error deleting account:', error);
+                throw error;
+            }
+
+            // Sign out explicitly to clear local session state
+            await supabase.auth.signOut();
+            return true;
+        },
     };
 
     return (

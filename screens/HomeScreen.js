@@ -3,11 +3,14 @@ import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Alert, Style
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import { useFocusEffect } from '@react-navigation/native';
+import ResponsiveScreen from '../components/ResponsiveScreen';
 
 export default function HomeScreen({ navigation, route }) {
     const { signOut, user, profile, passwordResetPending } = useAuth();
+    const { colors, isDarkMode } = useTheme();
     const [mySchools, setMySchools] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isParent, setIsParent] = useState(false);
@@ -118,21 +121,21 @@ export default function HomeScreen({ navigation, route }) {
     };
 
     const renderSchoolItem = ({ item }) => (
-        <View style={styles.schoolCard}>
+        <View style={[styles.schoolCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <TouchableOpacity
                 onPress={() => navigation.navigate('SchoolTabs', { school: item.schools, role: item.role })}
                 activeOpacity={0.7}
             >
                 <View style={styles.schoolCardInner}>
-                    <View style={styles.schoolIcon}>
-                        <Ionicons name="school-outline" size={24} color="#4a90d9" />
+                    <View style={[styles.schoolIcon, { backgroundColor: isDarkMode ? 'rgba(99, 179, 237, 0.15)' : 'rgba(74, 144, 217, 0.15)' }]}>
+                        <Ionicons name="school-outline" size={24} color={colors.primary} />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.schoolName}>{item.schools.name}</Text>
-                        <Text style={styles.schoolAddress}>{item.schools.address}</Text>
-                        <Text style={styles.roleText}>{item.role.toUpperCase()}</Text>
+                        <Text style={[styles.schoolName, { color: colors.text }]}>{item.schools.name}</Text>
+                        <Text style={[styles.schoolAddress, { color: colors.textMuted }]}>{item.schools.address}</Text>
+                        <Text style={[styles.roleText, { color: colors.primary }]}>{item.role.toUpperCase()}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#a3b1c6" />
+                    <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
                 </View>
             </TouchableOpacity>
 
@@ -159,113 +162,115 @@ export default function HomeScreen({ navigation, route }) {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.content}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <View>
-                        <Text style={styles.welcomeText}>Welcome!</Text>
-                        <Text style={styles.userName}>{profile?.full_name || user?.email}</Text>
-                    </View>
-                    {isParent && (
-                        <View style={styles.parentBadge}>
-                            <Text style={styles.parentBadgeText}>Parent Account</Text>
+            <ResponsiveScreen maxWidth={800}>
+                <View style={styles.content}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <View>
+                            <Text style={[styles.welcomeText, { color: colors.text }]}>Welcome!</Text>
+                            <Text style={[styles.userName, { color: colors.textLight }]}>{profile?.full_name || user?.email}</Text>
                         </View>
-                    )}
-                </View>
-
-                {/* My Schools Section */}
-                <View style={{ flex: 1, marginBottom: 16 }}>
-                    <Text style={styles.sectionTitle}>My Schools</Text>
-                    {loading ? (
-                        <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
-                    ) : mySchools.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <View style={styles.emptyIcon}>
-                                <Ionicons name="school-outline" size={48} color="#a3b1c6" />
+                        {isParent && (
+                            <View style={styles.parentBadge}>
+                                <Text style={styles.parentBadgeText}>Parent Account</Text>
                             </View>
-                            <Text style={styles.emptyText}>
-                                {isParent
-                                    ? "You haven't joined any schools yet."
-                                    : "You haven't joined any schools yet."}
-                            </Text>
-                            {isParent && (
-                                <Text style={styles.emptyHint}>
-                                    Tap "Find Schools" below to get started!
+                        )}
+                    </View>
+
+                    {/* My Schools Section */}
+                    <View style={{ flex: 1, marginBottom: 16 }}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>My Schools</Text>
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
+                        ) : mySchools.length === 0 ? (
+                            <View style={styles.emptyState}>
+                                <View style={styles.emptyIcon}>
+                                    <Ionicons name="school-outline" size={48} color="#a3b1c6" />
+                                </View>
+                                <Text style={styles.emptyText}>
+                                    {isParent
+                                        ? "You haven't joined any schools yet."
+                                        : "You haven't joined any schools yet."}
                                 </Text>
-                            )}
-                        </View>
-                    ) : (
-                        <FlatList
-                            data={mySchools}
-                            renderItem={renderSchoolItem}
-                            keyExtractor={item => item.schools.id}
-                            showsVerticalScrollIndicator={false}
-                            contentContainerStyle={{ paddingBottom: 20 }}
-                        />
-                    )}
+                                {isParent && (
+                                    <Text style={styles.emptyHint}>
+                                        Tap "Find Schools" below to get started!
+                                    </Text>
+                                )}
+                            </View>
+                        ) : (
+                            <FlatList
+                                data={mySchools}
+                                renderItem={renderSchoolItem}
+                                keyExtractor={item => item.schools.id}
+                                showsVerticalScrollIndicator={false}
+                                contentContainerStyle={{ paddingBottom: 20 }}
+                            />
+                        )}
+                    </View>
+
+                    {/* Actions */}
+                    <View style={styles.actionsContainer}>
+                        {/* Admin Dashboard Button - Only visible to App Admins */}
+                        {profile?.is_app_admin && (
+                            <TouchableOpacity
+                                style={styles.adminButton}
+                                onPress={() => navigation.navigate('AdminDashboard')}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="settings-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                                <Text style={styles.adminButtonText}>Admin Dashboard</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Find Schools - For Parents */}
+                        {isParent && (
+                            <TouchableOpacity
+                                style={styles.findButton}
+                                onPress={() => navigation.navigate('FindSchools')}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="search-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                                <Text style={styles.findButtonText}>Find Schools</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Register School - For Parents to create a new school */}
+                        {isParent && (
+                            <TouchableOpacity
+                                style={styles.registerSchoolButton}
+                                onPress={() => navigation.navigate('CreateSchool')}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="add-circle-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                                <Text style={styles.registerSchoolButtonText}>Register a School</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Technical Support - Always visible */}
+                        <TouchableOpacity
+                            style={styles.supportButton}
+                            onPress={() => navigation.navigate('TechnicalSupport')}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="help-circle-outline" size={20} color="#6c5ce7" style={{ marginRight: 8 }} />
+                            <Text style={styles.supportButtonText}>Technical Support</Text>
+                        </TouchableOpacity>
+
+                        {/* Sign Out - Only show if no schools (otherwise it's in the menu) */}
+                        {mySchools.length === 0 && (
+                            <TouchableOpacity
+                                style={styles.signOutButton}
+                                onPress={signOut}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="log-out-outline" size={20} color="#ff6b6b" style={{ marginRight: 8 }} />
+                                <Text style={styles.signOutButtonText}>Sign Out</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
-
-                {/* Actions */}
-                <View style={styles.actionsContainer}>
-                    {/* Admin Dashboard Button - Only visible to App Admins */}
-                    {profile?.is_app_admin && (
-                        <TouchableOpacity
-                            style={styles.adminButton}
-                            onPress={() => navigation.navigate('AdminDashboard')}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="settings-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
-                            <Text style={styles.adminButtonText}>Admin Dashboard</Text>
-                        </TouchableOpacity>
-                    )}
-
-                    {/* Find Schools - For Parents */}
-                    {isParent && (
-                        <TouchableOpacity
-                            style={styles.findButton}
-                            onPress={() => navigation.navigate('FindSchools')}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="search-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
-                            <Text style={styles.findButtonText}>Find Schools</Text>
-                        </TouchableOpacity>
-                    )}
-
-                    {/* Register School - For Parents to create a new school */}
-                    {isParent && (
-                        <TouchableOpacity
-                            style={styles.registerSchoolButton}
-                            onPress={() => navigation.navigate('CreateSchool')}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="add-circle-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
-                            <Text style={styles.registerSchoolButtonText}>Register a School</Text>
-                        </TouchableOpacity>
-                    )}
-
-                    {/* Technical Support - Always visible */}
-                    <TouchableOpacity
-                        style={styles.supportButton}
-                        onPress={() => navigation.navigate('TechnicalSupport')}
-                        activeOpacity={0.8}
-                    >
-                        <Ionicons name="help-circle-outline" size={20} color="#6c5ce7" style={{ marginRight: 8 }} />
-                        <Text style={styles.supportButtonText}>Technical Support</Text>
-                    </TouchableOpacity>
-
-                    {/* Sign Out - Only show if no schools (otherwise it's in the menu) */}
-                    {mySchools.length === 0 && (
-                        <TouchableOpacity
-                            style={styles.signOutButton}
-                            onPress={signOut}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="log-out-outline" size={20} color="#ff6b6b" style={{ marginRight: 8 }} />
-                            <Text style={styles.signOutButtonText}>Sign Out</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
-            </View>
+            </ResponsiveScreen>
         </SafeAreaView>
     );
 }

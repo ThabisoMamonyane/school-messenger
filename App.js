@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import WelcomeScreen from './screens/WelcomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
@@ -19,6 +20,7 @@ import ManageGroupsScreen from './screens/ManageGroupsScreen';
 import GroupDetailsScreen from './screens/GroupDetailsScreen';
 import FindSchoolsScreen from './screens/FindSchoolsScreen';
 import TechnicalSupportScreen from './screens/TechnicalSupportScreen';
+import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 
 import GroupChatScreen from './screens/GroupChatScreen';
 
@@ -44,6 +46,7 @@ const linking = {
 
 function AppContent() {
   const { session, loading } = useAuth();
+  const { isDarkMode } = useTheme();
 
   if (loading) {
     return null; // Or a loading spinner
@@ -64,6 +67,7 @@ function AppContent() {
             <Stack.Screen name="GroupDetails" component={GroupDetailsScreen} options={{ title: 'Group Details' }} />
             <Stack.Screen name="FindSchools" component={FindSchoolsScreen} options={{ title: 'Find Schools' }} />
             <Stack.Screen name="TechnicalSupport" component={TechnicalSupportScreen} options={{ title: 'Technical Support' }} />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: 'Privacy Policy' }} />
             {/* Allow password update even when logged in (e.g. if link logs them in) */}
             <Stack.Screen name="UpdatePassword" component={UpdatePasswordScreen} options={{ title: 'Update Password' }} />
           </>
@@ -77,7 +81,7 @@ function AppContent() {
           </>
         )}
       </Stack.Navigator>
-      <StatusBar style="auto" />
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
     </NavigationContainer>
   );
 }
@@ -85,7 +89,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </AuthProvider>
   );
 }

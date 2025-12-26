@@ -1,12 +1,14 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ResponsiveScreen from '../components/ResponsiveScreen';
 
 export default function SchoolMenuScreen({ navigation, route }) {
     const { school, role } = route.params || {};
     const { signOut } = useAuth();
+    const { isDarkMode, toggleTheme, colors } = useTheme();
 
     const handleSwitchSchool = () => {
         navigation.getParent().navigate('Home', { stayOnScreen: true });
@@ -21,85 +23,166 @@ export default function SchoolMenuScreen({ navigation, route }) {
         }
     };
 
-    const MenuItem = ({ icon, iconColor, iconBg, title, onPress, danger }) => (
+    const { deleteAccount } = useAuth();
+
+    const handleDeleteAccount = () => {
+        if (Platform.OS === 'web') {
+            if (window.confirm('Are you sure you want to delete your account? This action cannot be undone and you will lose all your data.')) {
+                performDelete();
+            }
+        } else {
+            Alert.alert(
+                'Delete Account',
+                'Are you sure you want to delete your account? This action cannot be undone and you will lose all your data.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: performDelete
+                    }
+                ]
+            );
+        }
+    };
+
+    const performDelete = async () => {
+        try {
+            await deleteAccount();
+        } catch (error) {
+            console.error('Error deleting account:', error);
+            Alert.alert('Error', 'Failed to delete account. Please try again or contact support.');
+        }
+    };
+
+    const MenuItem = ({ icon, iconColor, iconBg, title, onPress, danger, trailing }) => (
         <TouchableOpacity
-            style={[styles.menuItem, danger && styles.menuItemDanger]}
+            style={[
+                styles.menuItem,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                danger && styles.menuItemDanger
+            ]}
             onPress={onPress}
             activeOpacity={0.7}
+            disabled={!onPress}
         >
-            <View style={[styles.menuIconContainer, { backgroundColor: iconBg }]}>
-                <Ionicons name={icon} size={22} color={iconColor} />
+            <View style={[styles.menuIconContainer, { backgroundColor: iconBg || (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)') }]}>
+                <Ionicons name={icon} size={22} color={iconColor || colors.text} />
             </View>
-            <Text style={[styles.menuItemText, danger && styles.menuItemTextDanger]}>{title}</Text>
-            <Ionicons name="chevron-forward" size={20} color={danger ? "#ff6b6b" : "#a3b1c6"} />
+            <Text style={[styles.menuItemText, { color: colors.text }, danger && styles.menuItemTextDanger]}>{title}</Text>
+            {trailing ? trailing : (
+                <Ionicons name="chevron-forward" size={20} color={danger ? "#ff6b6b" : colors.textMuted} />
+            )}
         </TouchableOpacity>
     );
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                {/* Header */}
-                <TouchableOpacity
-                    onPress={handleSwitchSchool}
-                    style={styles.backButton}
-                >
-                    <Ionicons name="chevron-back" size={24} color="#4a90d9" />
-                    <Text style={styles.backText}>Switch School</Text>
-                </TouchableOpacity>
+            <ResponsiveScreen maxWidth={800}>
+                <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                    {/* Header */}
+                    <TouchableOpacity
+                        onPress={handleSwitchSchool}
+                        style={styles.backButton}
+                    >
+                        <Ionicons name="chevron-back" size={24} color="#4a90d9" />
+                        <Text style={styles.backText}>Switch School</Text>
+                    </TouchableOpacity>
 
-                {/* Admin/Staff Options */}
-                {role !== 'parent' && (
+                    {/* Admin/Staff Options */}
+                    {role !== 'parent' && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>SCHOOL MANAGEMENT</Text>
+
+                            <MenuItem
+                                icon="people-outline"
+                                iconColor="#4a90d9"
+                                iconBg="rgba(74, 144, 217, 0.15)"
+                                title="Manage Staff"
+                                onPress={() => navigation.navigate('ManageStaff', { schoolId: school.id, schoolName: school.name })}
+                            />
+
+                            <MenuItem
+                                icon="settings-outline"
+                                iconColor="#6c5ce7"
+                                iconBg="rgba(108, 92, 231, 0.15)"
+                                title="School Settings"
+                                onPress={() => navigation.navigate('Profile', { school, role })}
+                            />
+
+                            <MenuItem
+                                icon="library-outline"
+                                iconColor="#00b894"
+                                iconBg="rgba(0, 184, 148, 0.15)"
+                                title="Manage Groups"
+                                onPress={() => navigation.navigate('ManageGroups', { schoolId: school.id, schoolName: school.name })}
+                            />
+
+                            <View style={styles.divider} />
+
+                            <MenuItem
+                                icon="add-circle-outline"
+                                iconColor="#4a90d9"
+                                iconBg="rgba(74, 144, 217, 0.1)"
+                                title="Register a School"
+                                onPress={() => navigation.navigate('CreateSchool')}
+                            />
+                        </View>
+                    )}
+
+                    {/* Support & Settings */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>SCHOOL MANAGEMENT</Text>
-
+                        <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>PREFERENCES</Text>
                         <MenuItem
-                            icon="people-outline"
-                            iconColor="#4a90d9"
-                            iconBg="rgba(74, 144, 217, 0.15)"
-                            title="Manage Staff"
-                            onPress={() => navigation.navigate('ManageStaff', { schoolId: school.id, schoolName: school.name })}
-                        />
-
-                        <MenuItem
-                            icon="settings-outline"
-                            iconColor="#6c5ce7"
-                            iconBg="rgba(108, 92, 231, 0.15)"
-                            title="School Settings"
-                            onPress={() => navigation.navigate('Profile', { school, role })}
-                        />
-
-                        <MenuItem
-                            icon="library-outline"
-                            iconColor="#00b894"
-                            iconBg="rgba(0, 184, 148, 0.15)"
-                            title="Manage Groups"
-                            onPress={() => navigation.navigate('ManageGroups', { schoolId: school.id, schoolName: school.name })}
-                        />
-
-                        <View style={styles.divider} />
-
-                        <MenuItem
-                            icon="add-circle-outline"
-                            iconColor="#4a90d9"
-                            iconBg="rgba(74, 144, 217, 0.1)"
-                            title="Register a School"
-                            onPress={() => navigation.navigate('CreateSchool')}
+                            icon={isDarkMode ? "moon" : "sunny-outline"}
+                            iconColor={isDarkMode ? "#ffd43b" : "#f59e0b"}
+                            title="Dark Mode"
+                            trailing={
+                                <Switch
+                                    value={isDarkMode}
+                                    onValueChange={toggleTheme}
+                                    trackColor={{ false: '#d1dbe8', true: 'rgba(74, 144, 217, 0.5)' }}
+                                    thumbColor={isDarkMode ? '#4a90d9' : '#f4f3f4'}
+                                />
+                            }
                         />
                     </View>
-                )}
 
-                {/* Support */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>SUPPORT</Text>
-                    <MenuItem
-                        icon="help-circle-outline"
-                        iconColor="#6c5ce7"
-                        title="Sign Out"
-                        onPress={handleSignOut}
-                        danger
-                    />
-                </View>
-            </ScrollView>
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>SUPPORT</Text>
+                        <MenuItem
+                            icon="help-circle-outline"
+                            iconColor="#6c5ce7"
+                            title="Technical Support"
+                            onPress={() => navigation.navigate('TechnicalSupport', { schoolId: school.id })}
+                        />
+                        <MenuItem
+                            icon="shield-checkmark-outline"
+                            iconColor="#00b894"
+                            title="Privacy Policy"
+                            onPress={() => navigation.navigate('PrivacyPolicy')}
+                        />
+                        <MenuItem
+                            icon="log-out-outline"
+                            iconColor="#ff6b6b"
+                            title="Sign Out"
+                            onPress={handleSignOut}
+                            danger
+                        />
+                    </View>
+
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>DANGER ZONE</Text>
+                        <MenuItem
+                            icon="trash-outline"
+                            iconColor="#ff6b6b"
+                            title="Delete Account"
+                            onPress={handleDeleteAccount}
+                            danger
+                        />
+                    </View>
+                </ScrollView>
+            </ResponsiveScreen>
         </SafeAreaView>
     );
 }
@@ -107,7 +190,6 @@ export default function SchoolMenuScreen({ navigation, route }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#e8eef5',
     },
     scrollView: {
         flex: 1,
@@ -142,11 +224,6 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: 16,
         marginBottom: 10,
-        shadowColor: '#a3b1c6',
-        shadowOffset: { width: 5, height: 5 },
-        shadowOpacity: 0.25,
-        shadowRadius: 10,
-        elevation: 4,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.8)',
     },

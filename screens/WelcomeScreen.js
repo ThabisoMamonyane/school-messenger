@@ -1,12 +1,18 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import ResponsiveScreen from '../components/ResponsiveScreen';
+import LandingPageWeb from './LandingPageWeb';
+import { useTheme } from '../context/ThemeContext';
 
 export default function WelcomeScreen({ navigation }) {
+    const { colors, isDarkMode } = useTheme();
     const floatAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
+        if (Platform.OS === 'web') return; // Skip animation on web if not using mobile view
+
         const floatingAnimation = Animated.loop(
             Animated.sequence([
                 Animated.timing(floatAnim, {
@@ -26,48 +32,54 @@ export default function WelcomeScreen({ navigation }) {
         return () => floatingAnimation.stop();
     }, [floatAnim]);
 
+    if (Platform.OS === 'web') {
+        return <LandingPageWeb navigation={navigation} />;
+    }
+
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.gradientBg}>
-                <View style={styles.contentContainer}>
-                    {/* Logo centered on screen with floating animation */}
-                    <View style={styles.logoSection}>
-                        <Animated.Image
-                            source={require('../assets/main-logo.png')}
-                            style={[
-                                styles.logo,
-                                { transform: [{ translateY: floatAnim }] }
-                            ]}
-                            resizeMode="contain"
-                        />
-                    </View>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <ResponsiveScreen maxWidth={450}>
+                <View style={[styles.gradientBg, { backgroundColor: colors.background }]}>
+                    <View style={styles.contentContainer}>
+                        {/* Logo centered on screen with floating animation */}
+                        <View style={styles.logoSection}>
+                            <Animated.Image
+                                source={require('../assets/main-logo.png')}
+                                style={[
+                                    styles.logo,
+                                    { transform: [{ translateY: floatAnim }] }
+                                ]}
+                                resizeMode="contain"
+                            />
+                        </View>
 
-                    {/* Content at bottom */}
-                    <View style={styles.bottomSection}>
-                        <Text style={styles.tagline}>
-                            Your school community, all in one place.
-                        </Text>
-
-                        {/* Morphism Button */}
-                        <TouchableOpacity
-                            style={styles.primaryButton}
-                            onPress={() => navigation.navigate('Login')}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.primaryButtonText}>
-                                Get Started
+                        {/* Content at bottom */}
+                        <View style={styles.bottomSection}>
+                            <Text style={[styles.tagline, { color: colors.textLight }]}>
+                                Your school community, all in one place.
                             </Text>
-                        </TouchableOpacity>
 
-                        <View className="flex-row mt-6">
-                            <Text style={styles.secondaryText}>Already have an account? </Text>
-                            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                                <Text style={styles.linkText}>Log In</Text>
+                            {/* Morphism Button */}
+                            <TouchableOpacity
+                                style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+                                onPress={() => navigation.navigate('Login')}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.primaryButtonText}>
+                                    Get Started
+                                </Text>
                             </TouchableOpacity>
+
+                            <View className="flex-row mt-6">
+                                <Text style={[styles.secondaryText, { color: colors.textMuted }]}>Already have an account? </Text>
+                                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                                    <Text style={[styles.linkText, { color: colors.primary }]}>Log In</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
                 </View>
-            </View>
+            </ResponsiveScreen>
         </SafeAreaView>
     );
 }
@@ -75,11 +87,9 @@ export default function WelcomeScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#e8eef5',
     },
     gradientBg: {
         flex: 1,
-        backgroundColor: '#e8eef5',
     },
     contentContainer: {
         flex: 1,

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import ResponsiveScreen from '../components/ResponsiveScreen';
 import { useFocusEffect } from '@react-navigation/native';
 
 export default function GroupDetailsScreen({ navigation, route }) {
@@ -170,56 +171,58 @@ export default function GroupDetailsScreen({ navigation, route }) {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.content}>
-                <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={styles.backButton}
-                >
-                    <Ionicons name="chevron-back" size={24} color="#4a90d9" />
-                    <Text style={styles.backText}>Back</Text>
-                </TouchableOpacity>
+            <ResponsiveScreen maxWidth={800}>
+                <View style={styles.content}>
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        style={styles.backButton}
+                    >
+                        <Ionicons name="chevron-back" size={24} color="#4a90d9" />
+                        <Text style={styles.backText}>Back</Text>
+                    </TouchableOpacity>
 
-                <View style={styles.headerSection}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.groupName}>{group.name}</Text>
-                        {group.description && (
-                            <Text style={styles.groupDescription}>{group.description}</Text>
+                    <View style={styles.headerSection}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.groupName}>{group.name}</Text>
+                            {group.description && (
+                                <Text style={styles.groupDescription}>{group.description}</Text>
+                            )}
+                        </View>
+                        {isGroupAdmin && (
+                            <TouchableOpacity
+                                style={styles.addButton}
+                                onPress={() => setModalVisible(true)}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="add" size={18} color="#ffffff" />
+                                <Text style={styles.addButtonText}>Add</Text>
+                            </TouchableOpacity>
                         )}
                     </View>
-                    {isGroupAdmin && (
-                        <TouchableOpacity
-                            style={styles.addButton}
-                            onPress={() => setModalVisible(true)}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="add" size={18} color="#ffffff" />
-                            <Text style={styles.addButtonText}>Add</Text>
-                        </TouchableOpacity>
+
+                    <Text style={styles.sectionTitle}>
+                        Members ({members.length})
+                    </Text>
+
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
+                    ) : members.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <View style={styles.emptyIcon}>
+                                <Ionicons name="people-outline" size={48} color="#a3b1c6" />
+                            </View>
+                            <Text style={styles.emptyText}>No members yet</Text>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={members}
+                            renderItem={renderMemberItem}
+                            keyExtractor={item => item.id}
+                            showsVerticalScrollIndicator={false}
+                        />
                     )}
                 </View>
-
-                <Text style={styles.sectionTitle}>
-                    Members ({members.length})
-                </Text>
-
-                {loading ? (
-                    <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
-                ) : members.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <View style={styles.emptyIcon}>
-                            <Ionicons name="people-outline" size={48} color="#a3b1c6" />
-                        </View>
-                        <Text style={styles.emptyText}>No members yet</Text>
-                    </View>
-                ) : (
-                    <FlatList
-                        data={members}
-                        renderItem={renderMemberItem}
-                        keyExtractor={item => item.id}
-                        showsVerticalScrollIndicator={false}
-                    />
-                )}
-            </View>
+            </ResponsiveScreen>
 
             {/* Add Member Modal */}
             <Modal

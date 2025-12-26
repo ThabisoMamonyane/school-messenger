@@ -3,12 +3,15 @@ import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Sty
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import { useFocusEffect } from '@react-navigation/native';
+import ResponsiveScreen from '../components/ResponsiveScreen';
 
 export default function SchoolDashboardScreen({ route, navigation }) {
     const { school, role } = route.params;
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
+    const { colors, isDarkMode } = useTheme();
     const [allSchools, setAllSchools] = useState([]);
     const [myGroups, setMyGroups] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -142,165 +145,171 @@ export default function SchoolDashboardScreen({ route, navigation }) {
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* School Switcher - Pinned to Top */}
-            {allSchools.length > 1 && (
-                <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
-                    <View style={styles.switcherSection}>
-                        <Text style={styles.switcherLabel}>SWITCH SCHOOL</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            {allSchools.map((item) => {
-                                const isActive = item.schools.id === school.id;
-                                return (
+            <ResponsiveScreen maxWidth={800}>
+                {/* School Switcher - Pinned to Top */}
+                {allSchools.length > 1 && (
+                    <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
+                        <View style={styles.switcherSection}>
+                            <Text style={[styles.switcherLabel, { color: colors.textMuted }]}>SWITCH SCHOOL</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                {allSchools.map((item) => {
+                                    const isActive = item.schools.id === school.id;
+                                    return (
+                                        <TouchableOpacity
+                                            key={item.id}
+                                            style={[
+                                                styles.schoolChip,
+                                                { backgroundColor: colors.surface, borderColor: colors.border },
+                                                isActive && { backgroundColor: isDarkMode ? 'rgba(99, 179, 237, 0.15)' : 'rgba(74, 144, 217, 0.1)' }
+                                            ]}
+                                            onPress={() => {
+                                                if (!isActive) {
+                                                    navigation.getParent()?.replace('SchoolTabs', { school: item.schools, role: item.role });
+                                                }
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={[
+                                                styles.schoolChipIcon,
+                                                { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' },
+                                                isActive && { backgroundColor: isDarkMode ? 'rgba(99, 179, 237, 0.2)' : 'rgba(74, 144, 217, 0.15)' }
+                                            ]}>
+                                                {item.schools.avatar_url ? (
+                                                    <Image
+                                                        source={{ uri: item.schools.avatar_url }}
+                                                        style={{ width: 32, height: 32, borderRadius: 10 }}
+                                                    />
+                                                ) : (
+                                                    <Ionicons
+                                                        name="school"
+                                                        size={18}
+                                                        color={isActive ? "#4a90d9" : "#a0aec0"}
+                                                    />
+                                                )}
+                                            </View>
+                                            <View style={{ marginRight: 8 }}>
+                                                <Text style={[
+                                                    styles.schoolChipName,
+                                                    { color: colors.text },
+                                                    isActive && { color: colors.primary }
+                                                ]}>
+                                                    {item.schools.name}
+                                                </Text>
+                                                <Text style={[styles.schoolChipRole, { color: colors.textMuted }]}>{item.role}</Text>
+                                            </View>
+
+                                            {isActive && (
+                                                <Ionicons name="checkmark-circle" size={20} color="#4a90d9" />
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+                        </View>
+                    </View>
+                )}
+
+                <ScrollView
+                    style={[styles.scrollView, { backgroundColor: colors.background }]}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 100 }}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+                    }
+                >
+
+                    {/* School Header */}
+                    <View style={[styles.headerCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <Text style={[styles.welcomeGreeting, { color: colors.primary }]}>Welcome, {profile?.full_name || 'User'}</Text>
+                        <Text style={[styles.schoolName, { color: colors.text }]}>{school.name}</Text>
+                        <Text style={[styles.schoolAddress, { color: colors.textMuted }]}>{school.address}, {school.province}</Text>
+                        <Text style={[styles.dashboardBadgeText, { color: colors.primary }]}>{role.toUpperCase()} DASHBOARD</Text>
+                    </View>
+
+                    {/* Quick Stats */}
+                    <View style={[styles.statsCard, { backgroundColor: isDarkMode ? 'rgba(99, 179, 237, 0.1)' : 'rgba(74, 144, 217, 0.1)', borderColor: isDarkMode ? 'rgba(99, 179, 237, 0.2)' : 'rgba(74, 144, 217, 0.2)' }]}>
+                        <View style={[styles.statsIcon, { backgroundColor: isDarkMode ? 'rgba(99, 179, 237, 0.15)' : 'rgba(74, 144, 217, 0.15)' }]}>
+                            <Ionicons name="notifications-outline" size={24} color={colors.primary} />
+                        </View>
+                        <View>
+                            <Text style={[styles.statsLabel, { color: colors.primary }]}>Quick Stats</Text>
+                            <Text style={[styles.statsText, { color: colors.text }]}>
+                                You have <Text style={[styles.statsHighlight, { color: colors.primary }]}>{unreadCount}</Text> unread announcement{unreadCount !== 1 ? 's' : ''}.
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* My Groups */}
+                    <View style={[styles.groupsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <View style={styles.cardHeader}>
+                            <View style={[styles.cardIconContainer, { backgroundColor: isDarkMode ? 'rgba(108, 92, 231, 0.2)' : 'rgba(108, 92, 231, 0.15)' }]}>
+                                <Ionicons name="people-outline" size={24} color="#6c5ce7" />
+                            </View>
+                            <Text style={[styles.cardTitle, { color: colors.text }]}>My Groups</Text>
+                        </View>
+
+                        {errorMsg ? (
+                            <Text style={{ color: '#e53e3e', fontStyle: 'italic', marginVertical: 8 }}>{errorMsg}</Text>
+                        ) : myGroups.length === 0 ? (
+                            <Text style={styles.emptyText}>You haven't joined any groups yet.</Text>
+                        ) : (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupsList}>
+                                {myGroups.map((group) => (
+                                    <TouchableOpacity
+                                        key={group.id}
+                                        style={[styles.groupItem, { backgroundColor: isDarkMode ? '#2d3748' : '#ffffff' }]}
+                                        onPress={() => navigation.navigate('GroupChat', { group, schoolId: school.id })}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={styles.groupIcon}>
+                                            <Ionicons name="chatbubbles" size={20} color="#ffffff" />
+                                        </View>
+                                        <Text style={[styles.groupName, { color: colors.text }]} numberOfLines={2}>{group.name}</Text>
+                                        <View style={styles.arrowIcon}>
+                                            <Ionicons name="arrow-forward" size={14} color={colors.textMuted} />
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        )}
+                    </View>
+
+                    {/* Recent Activity */}
+                    <View style={[styles.activityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <Text style={[styles.activityTitle, { color: colors.text }]}>Recent Activity</Text>
+
+                        {recentActivity.length === 0 ? (
+                            <View style={styles.emptyActivity}>
+                                <Ionicons name="time-outline" size={32} color={colors.textMuted} />
+                                <Text style={[styles.emptyText, { color: colors.textMuted }]}>No recent activity to show.</Text>
+                            </View>
+                        ) : (
+                            <View>
+                                {recentActivity.map((item, index) => (
                                     <TouchableOpacity
                                         key={item.id}
                                         style={[
-                                            styles.schoolChip,
-                                            isActive && styles.schoolChipActive
+                                            styles.activityItem,
+                                            index !== recentActivity.length - 1 && [styles.activityItemBorder, { borderBottomColor: colors.border }]
                                         ]}
-                                        onPress={() => {
-                                            if (!isActive) {
-                                                navigation.getParent()?.replace('SchoolTabs', { school: item.schools, role: item.role });
-                                            }
-                                        }}
+                                        onPress={() => navigation.navigate('Announcements')}
                                         activeOpacity={0.7}
                                     >
-                                        <View style={[
-                                            styles.schoolChipIcon,
-                                            isActive && styles.schoolChipIconActive
-                                        ]}>
-                                            {item.schools.avatar_url ? (
-                                                <Image
-                                                    source={{ uri: item.schools.avatar_url }}
-                                                    style={{ width: 32, height: 32, borderRadius: 10 }}
-                                                />
-                                            ) : (
-                                                <Ionicons
-                                                    name="school"
-                                                    size={18}
-                                                    color={isActive ? "#4a90d9" : "#a0aec0"}
-                                                />
-                                            )}
+                                        <View style={[styles.activityIcon, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.15)' }]}>
+                                            <Ionicons name="megaphone-outline" size={20} color="#f59e0b" />
                                         </View>
-                                        <View style={{ marginRight: 8 }}>
-                                            <Text style={[
-                                                styles.schoolChipName,
-                                                isActive && styles.schoolChipNameActive
-                                            ]}>
-                                                {item.schools.name}
-                                            </Text>
-                                            <Text style={styles.schoolChipRole}>{item.role}</Text>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[styles.activityItemTitle, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+                                            <Text style={[styles.activityItemContent, { color: colors.textMuted }]} numberOfLines={2}>{item.content}</Text>
                                         </View>
-
-                                        {isActive && (
-                                            <Ionicons name="checkmark-circle" size={20} color="#4a90d9" />
-                                        )}
+                                        <Text style={[styles.activityItemDate, { color: colors.textMuted }]}>{formatDate(item.created_at)}</Text>
                                     </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
+                                ))}
+                            </View>
+                        )}
                     </View>
-                </View>
-            )}
-
-            <ScrollView
-                style={styles.scrollView}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100 }}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4a90d9" />
-                }
-            >
-
-                {/* School Header */}
-                <View style={styles.headerCard}>
-                    <Text style={styles.schoolName}>{school.name}</Text>
-                    <Text style={styles.schoolAddress}>{school.address}, {school.province}</Text>
-                    <Text style={styles.dashboardBadgeText}>{role.toUpperCase()} DASHBOARD</Text>
-                </View>
-
-                {/* Quick Stats */}
-                <View style={styles.statsCard}>
-                    <View style={styles.statsIcon}>
-                        <Ionicons name="notifications-outline" size={24} color="#4a90d9" />
-                    </View>
-                    <View>
-                        <Text style={styles.statsLabel}>Quick Stats</Text>
-                        <Text style={styles.statsText}>
-                            You have <Text style={styles.statsHighlight}>{unreadCount}</Text> unread announcement{unreadCount !== 1 ? 's' : ''}.
-                        </Text>
-                    </View>
-                </View>
-
-                {/* My Groups */}
-                <View style={styles.groupsCard}>
-                    <View style={styles.cardHeader}>
-                        <View style={styles.cardIconContainer}>
-                            <Ionicons name="people-outline" size={24} color="#6c5ce7" />
-                        </View>
-                        <Text style={styles.cardTitle}>My Groups</Text>
-                    </View>
-
-                    {errorMsg ? (
-                        <Text style={{ color: '#e53e3e', fontStyle: 'italic', marginVertical: 8 }}>{errorMsg}</Text>
-                    ) : myGroups.length === 0 ? (
-                        <Text style={styles.emptyText}>You haven't joined any groups yet.</Text>
-                    ) : (
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupsList}>
-                            {myGroups.map((group) => (
-                                <TouchableOpacity
-                                    key={group.id}
-                                    style={styles.groupItem}
-                                    onPress={() => navigation.navigate('GroupChat', { group, schoolId: school.id })}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={styles.groupIcon}>
-                                        <Ionicons name="chatbubbles" size={20} color="#ffffff" />
-                                    </View>
-                                    <Text style={styles.groupName} numberOfLines={2}>{group.name}</Text>
-                                    <View style={styles.arrowIcon}>
-                                        <Ionicons name="arrow-forward" size={14} color="#a3b1c6" />
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    )}
-                </View>
-
-                {/* Recent Activity */}
-                <View style={styles.activityCard}>
-                    <Text style={styles.activityTitle}>Recent Activity</Text>
-
-                    {recentActivity.length === 0 ? (
-                        <View style={styles.emptyActivity}>
-                            <Ionicons name="time-outline" size={32} color="#a3b1c6" />
-                            <Text style={styles.emptyText}>No recent activity to show.</Text>
-                        </View>
-                    ) : (
-                        <View>
-                            {recentActivity.map((item, index) => (
-                                <TouchableOpacity
-                                    key={item.id}
-                                    style={[
-                                        styles.activityItem,
-                                        index !== recentActivity.length - 1 && styles.activityItemBorder
-                                    ]}
-                                    onPress={() => navigation.navigate('Announcements')}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={styles.activityIcon}>
-                                        <Ionicons name="megaphone-outline" size={20} color="#f59e0b" />
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.activityItemTitle} numberOfLines={1}>{item.title}</Text>
-                                        <Text style={styles.activityItemContent} numberOfLines={2}>{item.content}</Text>
-                                    </View>
-                                    <Text style={styles.activityItemDate}>{formatDate(item.created_at)}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    )}
-                </View>
-            </ScrollView>
+                </ScrollView>
+            </ResponsiveScreen>
         </SafeAreaView>
     );
 }
@@ -308,7 +317,6 @@ export default function SchoolDashboardScreen({ route, navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#e8eef5',
     },
     scrollView: {
         flex: 1,
@@ -334,11 +342,6 @@ const styles = StyleSheet.create({
         minWidth: 160,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.8)',
-        shadowColor: '#a3b1c6',
-        shadowOffset: { width: 4, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 3,
     },
     schoolChipActive: {
         backgroundColor: 'rgba(74, 144, 217, 0.1)',
@@ -374,13 +377,14 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         padding: 24,
         marginBottom: 16,
-        shadowColor: '#a3b1c6',
-        shadowOffset: { width: 6, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 6,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.8)',
+    },
+    welcomeGreeting: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#4a90d9',
+        marginBottom: 8,
     },
     schoolName: {
         fontSize: 24,
@@ -436,11 +440,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.7)',
         borderRadius: 24,
         padding: 20,
-        shadowColor: '#a3b1c6',
-        shadowOffset: { width: 6, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 6,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.8)',
     },
@@ -497,11 +496,6 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         padding: 20,
         marginBottom: 16,
-        shadowColor: '#a3b1c6',
-        shadowOffset: { width: 6, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 6,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.8)',
     },
@@ -533,11 +527,8 @@ const styles = StyleSheet.create({
         padding: 16,
         marginRight: 12,
         width: 140,
-        shadowColor: '#a3b1c6',
-        shadowOffset: { width: 2, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-        elevation: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
     },
     groupIcon: {
         width: 36,

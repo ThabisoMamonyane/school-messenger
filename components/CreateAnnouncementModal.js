@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, ActivityIndicator, Alert, Switch, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Modal, ActivityIndicator, Alert, Switch, ScrollView, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 
 export default function CreateAnnouncementModal({ visible, onClose, schoolId, onCreated }) {
     const { user } = useAuth();
+    const { colors, isDarkMode } = useTheme();
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [category, setCategory] = useState('General');
@@ -49,25 +52,31 @@ export default function CreateAnnouncementModal({ visible, onClose, schoolId, on
                 const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
                 const filePath = `${schoolId}/${fileName}`;
 
-                const base64 = await FileSystem.readAsStringAsync(attachment.uri, {
-                    encoding: 'base64',
-                });
+                let fileBody;
 
-                const byteCharacters = atob(base64);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                if (Platform.OS === 'web') {
+                    // On web, fetch the blob directly from the URI
+                    const response = await fetch(attachment.uri);
+                    fileBody = await response.blob();
+                } else {
+                    // On mobile, read as base64 and decode to ArrayBuffer
+                    const base64 = await FileSystem.readAsStringAsync(attachment.uri, {
+                        encoding: 'base64',
+                    });
+                    fileBody = decode(base64);
                 }
-                const byteArray = new Uint8Array(byteNumbers);
 
                 const { error: uploadError } = await supabase.storage
                     .from('announcement-attachments')
-                    .upload(filePath, byteArray, {
+                    .upload(filePath, fileBody, {
                         contentType: attachment.mimeType || 'application/octet-stream',
                         upsert: false
                     });
 
-                if (uploadError) throw uploadError;
+                if (uploadError) {
+                    console.error('Storage upload error:', uploadError);
+                    throw new Error(`Upload failed: ${uploadError.message}`);
+                }
 
                 const { data: urlData } = supabase.storage
                     .from('announcement-attachments')
@@ -182,33 +191,33 @@ export default function CreateAnnouncementModal({ visible, onClose, schoolId, on
             presentationStyle="pageSheet"
             onRequestClose={onClose}
         >
-            <View style={styles.container}>
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Create Announcement</Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>Create Announcement</Text>
                     <TouchableOpacity onPress={onClose}>
-                        <Text style={styles.cancelLink}>Cancel</Text>
+                        <Text style={[styles.cancelLink, { color: colors.primary }]}>Cancel</Text>
                     </TouchableOpacity>
                 </View>
 
                 <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
                     <View style={{ gap: 16 }}>
                         <View>
-                            <Text style={styles.label}>Title *</Text>
+                            <Text style={[styles.label, { color: colors.text }]}>Title *</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { backgroundColor: colors.input, color: colors.text, borderColor: colors.border }]}
                                 placeholder="Announcement title..."
-                                placeholderTextColor="#a0aec0"
+                                placeholderTextColor={colors.textMuted}
                                 value={title}
                                 onChangeText={setTitle}
                             />
                         </View>
 
                         <View>
-                            <Text style={styles.label}>Content *</Text>
+                            <Text style={[styles.label, { color: colors.text }]}>Content *</Text>
                             <TextInput
-                                style={styles.textArea}
+                                style={[styles.textArea, { backgroundColor: colors.input, color: colors.text, borderColor: colors.border }]}
                                 placeholder="Write your announcement here..."
-                                placeholderTextColor="#a0aec0"
+                                placeholderTextColor={colors.textMuted}
                                 value={content}
                                 onChangeText={setContent}
                                 multiline
@@ -217,15 +226,23 @@ export default function CreateAnnouncementModal({ visible, onClose, schoolId, on
                         </View>
 
                         <View>
-                            <Text style={styles.label}>Category</Text>
+                            <Text style={[styles.label, { color: colors.text }]}>Category</Text>
                             <View style={styles.categoryGrid}>
                                 {categories.map((cat) => (
                                     <TouchableOpacity
                                         key={cat}
-                                        style={[styles.categoryChip, category === cat && styles.categoryChipActive]}
+                                        style={[
+                                            styles.categoryChip,
+                                            { backgroundColor: colors.surface, borderColor: colors.border },
+                                            category === cat && [styles.categoryChipActive, { backgroundColor: colors.primary, borderColor: colors.primary }]
+                                        ]}
                                         onPress={() => setCategory(cat)}
                                     >
-                                        <Text style={[styles.categoryChipText, category === cat && styles.categoryChipTextActive]}>
+                                        <Text style={[
+                                            styles.categoryChipText,
+                                            { color: colors.textLight },
+                                            category === cat && styles.categoryChipTextActive
+                                        ]}>
                                             {cat}
                                         </Text>
                                     </TouchableOpacity>
@@ -234,38 +251,41 @@ export default function CreateAnnouncementModal({ visible, onClose, schoolId, on
                         </View>
 
                         <View>
-                            <Text style={styles.label}>Attachment</Text>
+                            <Text style={[styles.label, { color: colors.text }]}>Attachment</Text>
                             {attachment ? (
-                                <View style={styles.attachmentPreview}>
-                                    <Ionicons name="document-outline" size={20} color="#4a90d9" />
-                                    <Text style={styles.attachmentText} numberOfLines={1}>{attachment.name}</Text>
+                                <View style={[styles.attachmentPreview, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(74, 144, 217, 0.1)', borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(74, 144, 217, 0.2)' }]}>
+                                    <Ionicons name="document-outline" size={20} color={colors.primary} />
+                                    <Text style={[styles.attachmentText, { color: colors.textLight }]} numberOfLines={1}>{attachment.name}</Text>
                                     <TouchableOpacity onPress={() => setAttachment(null)}>
                                         <Ionicons name="close-circle" size={22} color="#ff6b6b" />
                                     </TouchableOpacity>
                                 </View>
                             ) : (
-                                <TouchableOpacity style={styles.uploadButton} onPress={pickDocument}>
-                                    <Ionicons name="cloud-upload-outline" size={24} color="#4a90d9" />
-                                    <Text style={styles.uploadButtonText}>Tap to attach a file</Text>
+                                <TouchableOpacity
+                                    style={[styles.uploadButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(74, 144, 217, 0.05)', borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(74, 144, 217, 0.3)' }]}
+                                    onPress={pickDocument}
+                                >
+                                    <Ionicons name="cloud-upload-outline" size={24} color={colors.primary} />
+                                    <Text style={[styles.uploadButtonText, { color: colors.primary }]}>Tap to attach a file</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
 
-                        <View style={styles.pushRow}>
+                        <View style={[styles.pushRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.pushTitle}>Send Push Notification</Text>
-                                <Text style={styles.pushHint}>Notify all school members immediately</Text>
+                                <Text style={[styles.pushTitle, { color: colors.text }]}>Send Push Notification</Text>
+                                <Text style={[styles.pushHint, { color: colors.textMuted }]}>Notify all school members immediately</Text>
                             </View>
                             <Switch
                                 value={sendPush}
                                 onValueChange={setSendPush}
-                                trackColor={{ false: '#d1dbe8', true: 'rgba(74, 144, 217, 0.5)' }}
-                                thumbColor={sendPush ? '#4a90d9' : '#f4f3f4'}
+                                trackColor={{ false: isDarkMode ? '#2d3748' : '#d1dbe8', true: 'rgba(74, 144, 217, 0.5)' }}
+                                thumbColor={sendPush ? colors.primary : (isDarkMode ? '#4a5568' : '#f4f3f4')}
                             />
                         </View>
 
                         <TouchableOpacity
-                            style={styles.submitButton}
+                            style={[styles.submitButton, { backgroundColor: colors.primary }]}
                             onPress={handleCreate}
                             disabled={loading}
                             activeOpacity={0.8}
@@ -288,7 +308,6 @@ export default function CreateAnnouncementModal({ visible, onClose, schoolId, on
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#e8eef5',
         padding: 20,
     },
     header: {
@@ -416,11 +435,6 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         alignItems: 'center',
         marginTop: 8,
-        shadowColor: '#3a7bc8',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.35,
-        shadowRadius: 12,
-        elevation: 8,
     },
     submitButtonText: {
         color: '#ffffff',

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import ResponsiveScreen from '../components/ResponsiveScreen';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -280,87 +281,89 @@ export default function GroupChatScreen({ navigation, route }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 100}
-                style={{ flex: 1 }}
-            >
-                {/* Header */}
-                <View style={styles.header}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12 }}>
-                            <Ionicons name="chevron-back" size={28} color="#4a90d9" />
-                        </TouchableOpacity>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.headerTitle} numberOfLines={1}>{group.name}</Text>
-                            <Text style={styles.headerSubtitle}>{messages.length} messages</Text>
+            <ResponsiveScreen maxWidth={800}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 100}
+                    style={{ flex: 1 }}
+                >
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                            <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12 }}>
+                                <Ionicons name="chevron-back" size={28} color="#4a90d9" />
+                            </TouchableOpacity>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.headerTitle} numberOfLines={1}>{group.name}</Text>
+                                <Text style={styles.headerSubtitle}>{messages.length} messages</Text>
+                            </View>
                         </View>
-                    </View>
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('GroupDetails', { group, schoolId })}
-                        style={{ padding: 6 }}
-                    >
-                        <Ionicons name="information-circle-outline" size={24} color="#4a90d9" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Messages List */}
-                <View style={styles.messagesContainer}>
-                    {loading ? (
-                        <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
-                    ) : (
-                        <FlatList
-                            ref={flatListRef}
-                            data={messages}
-                            renderItem={renderMessage}
-                            keyExtractor={item => item.id}
-                            contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
-                            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-                            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
-                        />
-                    )}
-                </View>
-
-                {/* Attachment Preview */}
-                {attachment && (
-                    <View style={styles.attachmentPreview}>
-                        <Ionicons name="document-outline" size={20} color="#4a90d9" />
-                        <Text style={styles.attachmentPreviewText} numberOfLines={1}>{attachment.name}</Text>
-                        <TouchableOpacity onPress={() => setAttachment(null)}>
-                            <Ionicons name="close-circle" size={24} color="#ff6b6b" />
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('GroupDetails', { group, schoolId })}
+                            style={{ padding: 6 }}
+                        >
+                            <Ionicons name="information-circle-outline" size={24} color="#4a90d9" />
                         </TouchableOpacity>
                     </View>
-                )}
 
-                {/* Input Area */}
-                <View style={styles.inputArea}>
-                    <TouchableOpacity onPress={pickDocument} style={{ marginRight: 8, padding: 6 }}>
-                        <Ionicons name="attach" size={24} color="#4a90d9" />
-                    </TouchableOpacity>
-                    <TextInput
-                        style={styles.textInput}
-                        placeholder="Type a message..."
-                        placeholderTextColor="#a0aec0"
-                        value={newMessage}
-                        onChangeText={setNewMessage}
-                        multiline
-                    />
-                    <TouchableOpacity
-                        onPress={handleSend}
-                        disabled={(!newMessage.trim() && !attachment) || uploading}
-                        style={[
-                            styles.sendButton,
-                            ((newMessage.trim() || attachment) && !uploading) && styles.sendButtonActive
-                        ]}
-                    >
-                        {uploading ? (
-                            <ActivityIndicator size="small" color="white" />
+                    {/* Messages List */}
+                    <View style={styles.messagesContainer}>
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
                         ) : (
-                            <Ionicons name="send" size={18} color="white" />
+                            <FlatList
+                                ref={flatListRef}
+                                data={messages}
+                                renderItem={renderMessage}
+                                keyExtractor={item => item.id}
+                                contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+                                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                                onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                            />
                         )}
-                    </TouchableOpacity>
-                </View>
-            </KeyboardAvoidingView>
+                    </View>
+
+                    {/* Attachment Preview */}
+                    {attachment && (
+                        <View style={styles.attachmentPreview}>
+                            <Ionicons name="document-outline" size={20} color="#4a90d9" />
+                            <Text style={styles.attachmentPreviewText} numberOfLines={1}>{attachment.name}</Text>
+                            <TouchableOpacity onPress={() => setAttachment(null)}>
+                                <Ionicons name="close-circle" size={24} color="#ff6b6b" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* Input Area */}
+                    <View style={styles.inputArea}>
+                        <TouchableOpacity onPress={pickDocument} style={{ marginRight: 8, padding: 6 }}>
+                            <Ionicons name="attach" size={24} color="#4a90d9" />
+                        </TouchableOpacity>
+                        <TextInput
+                            style={styles.textInput}
+                            placeholder="Type a message..."
+                            placeholderTextColor="#a0aec0"
+                            value={newMessage}
+                            onChangeText={setNewMessage}
+                            multiline
+                        />
+                        <TouchableOpacity
+                            onPress={handleSend}
+                            disabled={(!newMessage.trim() && !attachment) || uploading}
+                            style={[
+                                styles.sendButton,
+                                ((newMessage.trim() || attachment) && !uploading) && styles.sendButtonActive
+                            ]}
+                        >
+                            {uploading ? (
+                                <ActivityIndicator size="small" color="white" />
+                            ) : (
+                                <Ionicons name="send" size={18} color="white" />
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </KeyboardAvoidingView>
+            </ResponsiveScreen>
         </SafeAreaView>
     );
 }

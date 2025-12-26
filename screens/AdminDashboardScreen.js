@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import ResponsiveScreen from '../components/ResponsiveScreen';
 
 export default function AdminDashboardScreen({ navigation }) {
+    const { profile } = useAuth();
     const [pendingSchools, setPendingSchools] = useState([]);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState(null);
@@ -115,42 +118,47 @@ export default function AdminDashboardScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={28} color="#4a90d9" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Admin Dashboard</Text>
-                <View style={{ width: 32 }} />
-            </View>
-
-            <View style={styles.content}>
-                <View style={styles.sectionHeader}>
-                    <View style={styles.sectionIcon}>
-                        <Ionicons name="time-outline" size={22} color="#6c5ce7" />
+            <ResponsiveScreen maxWidth={800}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <Ionicons name="chevron-back" size={28} color="#4a90d9" />
+                    </TouchableOpacity>
+                    <View style={{ flex: 1, alignItems: 'center' }}>
+                        <Text style={styles.headerTitle}>Admin Dashboard</Text>
+                        <Text style={styles.adminName}>{profile?.full_name || 'Administrator'}</Text>
                     </View>
-                    <Text style={styles.sectionTitle}>Pending School Requests</Text>
+                    <View style={{ width: 32 }} />
                 </View>
 
-                {loading ? (
-                    <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
-                ) : pendingSchools.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <View style={styles.emptyIcon}>
-                            <Ionicons name="checkmark-done-outline" size={48} color="#00b894" />
+                <View style={styles.content}>
+                    <View style={styles.sectionHeader}>
+                        <View style={styles.sectionIcon}>
+                            <Ionicons name="time-outline" size={22} color="#6c5ce7" />
                         </View>
-                        <Text style={styles.emptyTitle}>All caught up!</Text>
-                        <Text style={styles.emptyText}>No pending school requests to review.</Text>
+                        <Text style={styles.sectionTitle}>Pending School Requests</Text>
                     </View>
-                ) : (
-                    <FlatList
-                        data={pendingSchools}
-                        renderItem={renderSchoolItem}
-                        keyExtractor={item => item.id}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{ paddingBottom: 20 }}
-                    />
-                )}
-            </View>
+
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
+                    ) : pendingSchools.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <View style={styles.emptyIcon}>
+                                <Ionicons name="checkmark-done-outline" size={48} color="#00b894" />
+                            </View>
+                            <Text style={styles.emptyTitle}>All caught up!</Text>
+                            <Text style={styles.emptyText}>No pending school requests to review.</Text>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={pendingSchools}
+                            renderItem={renderSchoolItem}
+                            keyExtractor={item => item.id}
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{ paddingBottom: 20 }}
+                        />
+                    )}
+                </View>
+            </ResponsiveScreen>
         </SafeAreaView>
     );
 }
@@ -174,9 +182,15 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '700',
         color: '#2d3748',
+    },
+    adminName: {
+        fontSize: 12,
+        color: '#4a90d9',
+        fontWeight: '600',
+        marginTop: 2,
     },
     content: {
         flex: 1,

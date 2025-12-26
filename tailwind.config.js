@@ -6,6 +6,7 @@ module.exports = {
     "./screens/**/*.{js,jsx,ts,tsx}",
     "./components/**/*.{js,jsx,ts,tsx}"
   ],
+  darkMode: 'class',
   presets: [require("nativewind/preset")],
   theme: {
     extend: {

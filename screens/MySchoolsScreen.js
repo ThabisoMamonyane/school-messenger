@@ -4,10 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { useTheme } from '../context/ThemeContext';
+import ResponsiveScreen from '../components/ResponsiveScreen';
 import { useFocusEffect } from '@react-navigation/native';
 
 export default function MySchoolsScreen({ navigation }) {
     const { user } = useAuth();
+    const { colors, isDarkMode } = useTheme();
     const [mySchools, setMySchools] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -82,85 +85,87 @@ export default function MySchoolsScreen({ navigation }) {
 
     if (loading && mySchools.length === 0) {
         return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color="#4a90d9" />
+            <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
             </View>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                <View style={styles.header}>
-                    <Text style={styles.title}>My Schools</Text>
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('FindSchools')}
-                        style={styles.addButton}
-                        activeOpacity={0.8}
-                    >
-                        <Ionicons name="add" size={20} color="white" />
-                        <Text style={styles.addButtonText}>Add School</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {mySchools.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <View style={styles.emptyIcon}>
-                            <Ionicons name="school-outline" size={56} color="#a3b1c6" />
-                        </View>
-                        <Text style={styles.emptyText}>
-                            You haven't joined any schools yet.
-                        </Text>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <ResponsiveScreen maxWidth={800}>
+                <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                    <View style={styles.header}>
+                        <Text style={[styles.title, { color: colors.text }]}>My Schools</Text>
                         <TouchableOpacity
-                            style={styles.findButton}
                             onPress={() => navigation.navigate('FindSchools')}
+                            style={[styles.addButton, { backgroundColor: colors.primary }]}
                             activeOpacity={0.8}
                         >
-                            <Text style={styles.findButtonText}>Find a School</Text>
+                            <Ionicons name="add" size={20} color="white" />
+                            <Text style={styles.addButtonText}>Add School</Text>
                         </TouchableOpacity>
                     </View>
-                ) : (
-                    <View>
-                        {mySchools.map((item) => (
-                            <TouchableOpacity
-                                key={item.id}
-                                style={styles.schoolCard}
-                                onPress={() => navigation.getParent()?.replace('SchoolTabs', { school: item.schools, role: item.role })}
-                                activeOpacity={0.7}
-                            >
-                                <View style={styles.schoolHeader}>
-                                    <View style={styles.schoolIcon}>
-                                        {item.schools.avatar_url ? (
-                                            <Image
-                                                source={{ uri: item.schools.avatar_url }}
-                                                style={{ width: 48, height: 48, borderRadius: 14 }}
-                                            />
-                                        ) : (
-                                            <Ionicons name="school" size={24} color="#4a90d9" />
-                                        )}
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.schoolName}>{item.schools.name}</Text>
-                                        <Text style={styles.schoolAddress}>{item.schools.address}</Text>
-                                        <Text style={styles.roleText}>{item.role.toUpperCase()}</Text>
-                                    </View>
-                                </View>
 
-                                <View style={styles.cardFooter}>
-                                    <TouchableOpacity
-                                        onPress={() => handleLeaveSchool(item.schools.id, item.schools.name)}
-                                        style={styles.leaveButton}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Ionicons name="log-out-outline" size={16} color="#ff6b6b" />
-                                        <Text style={styles.leaveButtonText}>Leave School</Text>
-                                    </TouchableOpacity>
-                                </View>
+                    {mySchools.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <View style={[styles.emptyIcon, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(163, 177, 198, 0.2)' }]}>
+                                <Ionicons name="school-outline" size={56} color={colors.textMuted} />
+                            </View>
+                            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                                You haven't joined any schools yet.
+                            </Text>
+                            <TouchableOpacity
+                                style={[styles.findButton, { backgroundColor: colors.primary }]}
+                                onPress={() => navigation.navigate('FindSchools')}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.findButtonText}>Find a School</Text>
                             </TouchableOpacity>
-                        ))}
-                    </View>
-                )}
-            </ScrollView>
+                        </View>
+                    ) : (
+                        <View>
+                            {mySchools.map((item) => (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    style={[styles.schoolCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                    onPress={() => navigation.getParent()?.replace('SchoolTabs', { school: item.schools, role: item.role })}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={styles.schoolHeader}>
+                                        <View style={[styles.schoolIcon, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(74, 144, 217, 0.15)' }]}>
+                                            {item.schools.avatar_url ? (
+                                                <Image
+                                                    source={{ uri: item.schools.avatar_url }}
+                                                    style={{ width: 48, height: 48, borderRadius: 14 }}
+                                                />
+                                            ) : (
+                                                <Ionicons name="school" size={24} color={colors.primary} />
+                                            )}
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[styles.schoolName, { color: colors.text }]}>{item.schools.name}</Text>
+                                            <Text style={[styles.schoolAddress, { color: colors.textMuted }]}>{item.schools.address}</Text>
+                                            <Text style={[styles.roleText, { color: colors.primary }]}>{item.role.toUpperCase()}</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={[styles.cardFooter, { borderTopColor: colors.border }]}>
+                                        <TouchableOpacity
+                                            onPress={() => handleLeaveSchool(item.schools.id, item.schools.name)}
+                                            style={styles.leaveButton}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons name="log-out-outline" size={16} color="#ff6b6b" />
+                                            <Text style={styles.leaveButtonText}>Leave School</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
+                </ScrollView>
+            </ResponsiveScreen>
         </SafeAreaView>
     );
 }
@@ -168,7 +173,6 @@ export default function MySchoolsScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#e8eef5',
     },
     scrollView: {
         flex: 1,
@@ -183,7 +187,6 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 26,
         fontWeight: '700',
-        color: '#2d3748',
     },
     addButton: {
         flexDirection: 'row',
@@ -212,13 +215,11 @@ const styles = StyleSheet.create({
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: 'rgba(163, 177, 198, 0.2)',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 20,
     },
     emptyText: {
-        color: '#718096',
         fontSize: 16,
         textAlign: 'center',
         marginBottom: 24,
@@ -240,17 +241,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     schoolCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.7)',
         borderRadius: 20,
         padding: 16,
         marginBottom: 12,
-        shadowColor: '#a3b1c6',
-        shadowOffset: { width: 5, height: 5 },
-        shadowOpacity: 0.25,
-        shadowRadius: 10,
-        elevation: 4,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.8)',
     },
     schoolHeader: {
         flexDirection: 'row',
@@ -260,7 +254,6 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 14,
-        backgroundColor: 'rgba(74, 144, 217, 0.15)',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 14,
@@ -269,22 +262,18 @@ const styles = StyleSheet.create({
     schoolName: {
         fontSize: 17,
         fontWeight: '700',
-        color: '#2d3748',
     },
     schoolAddress: {
         fontSize: 14,
-        color: '#718096',
         marginTop: 2,
     },
     roleText: {
-        color: '#4a90d9',
         fontSize: 11,
         fontWeight: '700',
         marginTop: 8,
     },
     cardFooter: {
         borderTopWidth: 1,
-        borderTopColor: 'rgba(163, 177, 198, 0.2)',
         marginTop: 12,
         paddingTop: 12,
         alignItems: 'flex-end',

@@ -7,6 +7,7 @@ import { BlurView } from 'expo-blur';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { useIsFocused } from '@react-navigation/native';
 
 import SchoolDashboardScreen from '../screens/SchoolDashboardScreen';
@@ -21,6 +22,7 @@ export default function SchoolTabNavigator({ route }) {
     const { school, role } = route.params;
     const isParent = role === 'parent';
     const { user } = useAuth();
+    const { colors, isDarkMode } = useTheme();
     const isFocused = useIsFocused();
     const [unreadCount, setUnreadCount] = useState(0);
 
@@ -79,13 +81,13 @@ export default function SchoolTabNavigator({ route }) {
                     }
 
                     return (
-                        <View style={focused ? styles.iconContainerActive : styles.iconContainer}>
+                        <View style={focused ? [styles.iconContainerActive, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(74, 144, 217, 0.12)' }] : styles.iconContainer}>
                             <Ionicons name={iconName} size={22} color={color} />
                         </View>
                     );
                 },
-                tabBarActiveTintColor: '#4a90d9',
-                tabBarInactiveTintColor: '#718096',
+                tabBarActiveTintColor: colors.primary,
+                tabBarInactiveTintColor: colors.textMuted,
                 tabBarShowLabel: true,
                 tabBarLabelStyle: {
                     fontSize: 11,
@@ -94,21 +96,23 @@ export default function SchoolTabNavigator({ route }) {
                 },
                 tabBarStyle: {
                     position: 'absolute',
-                    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+                    backgroundColor: isDarkMode
+                        ? (Platform.OS === 'ios' ? 'rgba(26, 32, 44, 0.85)' : '#1a202c')
+                        : (Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.95)'),
                     borderTopWidth: 0,
                     elevation: 0,
                     height: Platform.OS === 'ios' ? 85 : 70,
                     paddingTop: 8,
                     paddingHorizontal: 8,
-                    shadowColor: '#a3b1c6',
+                    shadowColor: isDarkMode ? '#000000' : '#a3b1c6',
                     shadowOffset: { width: 0, height: -4 },
-                    shadowOpacity: 0.15,
+                    shadowOpacity: isDarkMode ? 0.3 : 0.15,
                     shadowRadius: 12,
                 },
                 tabBarBackground: () => (
                     Platform.OS === 'ios' ? (
                         <BlurView
-                            tint="light"
+                            tint={isDarkMode ? "dark" : "light"}
                             intensity={80}
                             style={StyleSheet.absoluteFill}
                         />
@@ -167,7 +171,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         width: 44,
         height: 30,
-        backgroundColor: 'rgba(74, 144, 217, 0.12)',
         borderRadius: 12,
     },
 });
