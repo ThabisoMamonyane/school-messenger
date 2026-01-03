@@ -34,10 +34,11 @@
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/template.js"
     ],
-    "/_not-found/page": [
+    "/dashboard/calendar/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/_not-found/page.js"
+      "static/css/css-app_dashboard_calendar_page_module_css.css",
+      "static/chunks/app/dashboard/calendar/page.js"
     ]
   }
 }

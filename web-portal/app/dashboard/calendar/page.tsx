@@ -70,7 +70,7 @@ function CalendarContent() {
                 const { data: evts } = await supabase
                     .from('school_events')
                     .select('*')
-                    .eq('school_id', selectedSchool.id);
+                    .or(`school_id.eq.${selectedSchool.id},is_all_schools.eq.true`);
 
                 setEvents(evts || []);
             }
@@ -144,8 +144,11 @@ function CalendarContent() {
     };
 
     const getEventColor = (evt: any) => {
+        if (evt.type === 'public_holiday') return { bg: '#10b981', text: '#fff' }; // Emerald
+        if (evt.type === 'school_holiday') return { bg: '#f59e0b', text: '#fff' }; // Amber
+
         // Deterministic color based on title length + id char code
-        const sum = (evt.title.length || 0) + (evt.id.charCodeAt(0) || 0);
+        const sum = (evt.title?.length || 0) + (evt.id?.charCodeAt(0) || 0);
         return EVENT_COLORS[sum % EVENT_COLORS.length];
     };
 
@@ -174,11 +177,16 @@ function CalendarContent() {
 
                         const dateStr = date.toISOString().split('T')[0];
                         const dayEvents = events.filter(e => e.event_date === dateStr);
+                        const isPublic = dayEvents.some(e => e.type === 'public_holiday');
+                        const isSchool = dayEvents.some(e => e.type === 'school_holiday');
 
                         return (
                             <div
                                 key={i}
                                 className={`${styles.dayCell} ${isToday(date) ? styles.today : ''} ${isSelected(date) ? styles.selected : ''}`}
+                                style={{
+                                    backgroundColor: isSelected(date) ? undefined : (isPublic ? '#ecfdf5' : isSchool ? '#fffbeb' : undefined)
+                                }}
                                 onClick={() => setSelectedDate(date)}
                             >
                                 <span className={styles.dayNumber}>{date.getDate()}</span>

@@ -42,7 +42,7 @@ export default function SchoolCalendarScreen({ route, navigation }) {
             const { data, error } = await supabase
                 .from('school_events')
                 .select('*')
-                .eq('school_id', school.id)
+                .or(`school_id.eq.${school.id},is_all_schools.eq.true`)
                 .order('event_date', { ascending: true });
 
             if (error) throw error;
@@ -223,7 +223,10 @@ export default function SchoolCalendarScreen({ route, navigation }) {
             const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
             const isSelected = isSameDay(date, selectedDate);
             const isToday = isSameDay(date, new Date());
-            const dateHasEvents = hasEvents(date);
+            const dayEvents = getEventsForDate(date);
+            const dateHasEvents = dayEvents.length > 0;
+            const isPublicHoliday = dayEvents.some(e => e.type === 'public_holiday');
+            const isSchoolHoliday = dayEvents.some(e => e.type === 'school_holiday');
 
             days.push(
                 <TouchableOpacity
@@ -235,17 +238,25 @@ export default function SchoolCalendarScreen({ route, navigation }) {
                     <View style={[
                         styles.dayInner,
                         isSelected && { backgroundColor: '#4a90d9' },
-                        isToday && !isSelected && { borderWidth: 2, borderColor: '#4a90d9' }
+                        isToday && !isSelected && { borderWidth: 2, borderColor: '#4a90d9' },
+                        !isSelected && isPublicHoliday && { backgroundColor: 'rgba(16, 185, 129, 0.15)' },
+                        !isSelected && isSchoolHoliday && { backgroundColor: 'rgba(245, 158, 11, 0.15)' }
                     ]}>
                         <Text style={[
                             styles.dayText,
                             { color: isSelected ? '#fff' : colors.text },
-                            isToday && !isSelected && { color: '#4a90d9', fontWeight: '800' }
+                            isToday && !isSelected && { color: '#4a90d9', fontWeight: '800' },
+                            !isSelected && isPublicHoliday && { color: '#059669', fontWeight: '700' },
+                            !isSelected && isSchoolHoliday && { color: '#d97706', fontWeight: '700' }
                         ]}>
                             {day}
                         </Text>
                         {dateHasEvents && !isSelected && (
-                            <View style={styles.eventDot} />
+                            <View style={[
+                                styles.eventDot,
+                                isPublicHoliday && { backgroundColor: '#059669' },
+                                isSchoolHoliday && { backgroundColor: '#d97706' }
+                            ]} />
                         )}
                         {dateHasEvents && isSelected && (
                             <View style={[styles.eventDot, { backgroundColor: '#fff' }]} />
@@ -321,7 +332,11 @@ export default function SchoolCalendarScreen({ route, navigation }) {
                             selectedDateEvents.map((event, index) => (
                                 <View key={event.id} style={[styles.eventCard, { backgroundColor: colors.surface, borderLeftColor: index % 2 === 0 ? '#4a90d9' : '#9D85FC' }]}>
                                     <View style={styles.eventInfo}>
-                                        <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
+                                        <Text style={[styles.eventTitle, { color: colors.text }]}>
+                                            {event.title}
+                                            {event.type === 'public_holiday' && <Text style={{ color: '#10b981', fontSize: 10 }}> [Public]</Text>}
+                                            {event.type === 'school_holiday' && <Text style={{ color: '#f59e0b', fontSize: 10 }}> [School]</Text>}
+                                        </Text>
                                         {event.description && (
                                             <Text style={[styles.eventDescription, { color: colors.textMuted }]} numberOfLines={2}>{event.description}</Text>
                                         )}

@@ -192,7 +192,7 @@
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	!function() {
-/******/ 		__webpack_require__.h = function() { return "0818e58820abe1e6"; }
+/******/ 		__webpack_require__.h = function() { return "429d69e4123d724d"; }
 /******/ 	}();
 /******/ 	
 /******/ 	/* webpack/runtime/global */
@@ -833,7 +833,8 @@
 /******/ 			"css-app_page_module_css": 0,
 /******/ 			"css-app_globals_css": 0,
 /******/ 			"css-app_dashboard_page_module_css": 0,
-/******/ 			"css-components_Sidebar_module_css": 0
+/******/ 			"css-components_Sidebar_module_css": 0,
+/******/ 			"css-app_dashboard_calendar_page_module_css": 0
 /******/ 		};
 /******/ 		
 /******/ 		__webpack_require__.f.j = function(chunkId, promises) {
@@ -845,7 +846,7 @@
 /******/ 					if(installedChunkData) {
 /******/ 						promises.push(installedChunkData[2]);
 /******/ 					} else {
-/******/ 						if(!/^(css\-(app_((|dashboard_)page_module|globals)_css|components_Sidebar_module_css)|webpack)$/.test(chunkId)) {
+/******/ 						if(/^(app(\/(dashboard\/(((|calendar\/)pag|templat)e|layout)|layout|page|template)|\-pages\-internals)|main\-app)$/.test(chunkId)) {
 /******/ 							// setup Promise in chunk cache
 /******/ 							var promise = new Promise(function(resolve, reject) { installedChunkData = installedChunks[chunkId] = [resolve, reject]; });
 /******/ 							promises.push(installedChunkData[2] = promise);
