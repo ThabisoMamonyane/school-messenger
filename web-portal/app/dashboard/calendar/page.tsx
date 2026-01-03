@@ -50,6 +50,11 @@ function CalendarContent() {
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Form
     const [title, setTitle] = useState('');
@@ -162,7 +167,7 @@ function CalendarContent() {
             <div className={styles.calendarColumn}>
                 <div className={styles.calendarHeader}>
                     <h2 className={styles.monthTitle}>
-                        {currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                        {mounted ? currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : '...'}
                     </h2>
                     <div style={{ display: 'flex', gap: 8 }}>
                         <button onClick={() => handleMonthChange(-1)} className={styles.navBtn}><Icons.Left /></button>
@@ -213,7 +218,7 @@ function CalendarContent() {
             <div className={styles.detailsColumn}>
                 <div className={styles.detailsHeader}>
                     <div className={styles.selectedDateTitle}>
-                        {selectedDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                        {mounted ? selectedDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : '...'}
                     </div>
                     {canEdit && (
                         <button className={styles.addBtn} onClick={() => setModalOpen(true)}>
