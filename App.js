@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import WelcomeScreen from './screens/WelcomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
@@ -21,6 +22,7 @@ import GroupDetailsScreen from './screens/GroupDetailsScreen';
 import FindSchoolsScreen from './screens/FindSchoolsScreen';
 import TechnicalSupportScreen from './screens/TechnicalSupportScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
+import SchoolCalendarScreen from './screens/SchoolCalendarScreen';
 
 import GroupChatScreen from './screens/GroupChatScreen';
 
@@ -54,7 +56,7 @@ function AppContent() {
 
   return (
     <NavigationContainer linking={linking}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         {session ? (
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
@@ -68,6 +70,7 @@ function AppContent() {
             <Stack.Screen name="FindSchools" component={FindSchoolsScreen} options={{ title: 'Find Schools' }} />
             <Stack.Screen name="TechnicalSupport" component={TechnicalSupportScreen} options={{ title: 'Technical Support' }} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: 'Privacy Policy' }} />
+            <Stack.Screen name="SchoolCalendar" component={SchoolCalendarScreen} options={{ title: 'School Calendar' }} />
             {/* Allow password update even when logged in (e.g. if link logs them in) */}
             <Stack.Screen name="UpdatePassword" component={UpdatePasswordScreen} options={{ title: 'Update Password' }} />
           </>
@@ -88,10 +91,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

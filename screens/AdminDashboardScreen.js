@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Alert, StyleSheet, Modal, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,8 @@ export default function AdminDashboardScreen({ navigation }) {
     const [pendingSchools, setPendingSchools] = useState([]);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState(null);
+    const [selectedRequest, setSelectedRequest] = useState(null);
+    const [modalVisible, setModalVisible] = useState(false);
 
     useEffect(() => {
         fetchPendingSchools();
@@ -18,9 +20,17 @@ export default function AdminDashboardScreen({ navigation }) {
 
     const fetchPendingSchools = async () => {
         try {
+            // Updated query to fetch requester details via owner_id relation
             const { data, error } = await supabase
                 .from('schools')
-                .select('*')
+                .select(`
+                    *,
+                    owner:profiles!schools_owner_id_fkey (
+                        full_name,
+                        email,
+                        avatar_url
+                    )
+                `)
                 .eq('status', 'pending')
                 .order('created_at', { ascending: false });
 
@@ -44,6 +54,7 @@ export default function AdminDashboardScreen({ navigation }) {
 
             if (error) throw error;
             Alert.alert('Success', 'School approved successfully');
+            setModalVisible(false); // Close modal if open
             fetchPendingSchools();
         } catch (error) {
             Alert.alert('Error', error.message);
@@ -62,6 +73,7 @@ export default function AdminDashboardScreen({ navigation }) {
 
             if (error) throw error;
             Alert.alert('Rejected', 'School registration rejected');
+            setModalVisible(false); // Close modal if open
             fetchPendingSchools();
         } catch (error) {
             Alert.alert('Error', error.message);
@@ -70,22 +82,35 @@ export default function AdminDashboardScreen({ navigation }) {
         }
     };
 
+    const openRequestDetails = (item) => {
+        setSelectedRequest(item);
+        setModalVisible(true);
+    };
+
     const renderSchoolItem = ({ item }) => (
         <View style={styles.schoolCard}>
-            <View style={styles.cardHeader}>
-                <View style={styles.schoolIcon}>
-                    <Ionicons name="school-outline" size={24} color="#6c5ce7" />
+            <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => openRequestDetails(item)}
+            >
+                <View style={styles.cardHeader}>
+                    <View style={styles.schoolIcon}>
+                        <Ionicons name="school-outline" size={24} color="#6c5ce7" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.schoolName}>{item.name}</Text>
+                        <Text style={styles.schoolAddress}>{item.address}, {item.province}</Text>
+                    </View>
+                    <Ionicons name="information-circle-outline" size={24} color="#4a90d9" />
                 </View>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.schoolName}>{item.name}</Text>
-                    <Text style={styles.schoolAddress}>{item.address}, {item.province}</Text>
-                </View>
-            </View>
 
-            <View style={styles.statusBadge}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>Pending Approval</Text>
-            </View>
+                <View style={styles.statusBadge}>
+                    <View style={styles.statusDot} />
+                    <Text style={styles.statusText}>Pending Approval</Text>
+                </View>
+
+                <Text style={styles.requesterHint}>Requested by: {item.owner?.full_name || 'Unknown User'}</Text>
+            </TouchableOpacity>
 
             <View style={styles.buttonRow}>
                 <TouchableOpacity
@@ -115,6 +140,97 @@ export default function AdminDashboardScreen({ navigation }) {
             </View>
         </View>
     );
+
+    const RequestDetailsModal = () => {
+        if (!selectedRequest) return null;
+        return (
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={modalVisible}
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Request Details</Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                                <Ionicons name="close" size={24} color="#2d3748" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            <View style={styles.detailSection}>
+                                <Text style={styles.detailSectionTitle}>School Information</Text>
+                                <View style={styles.detailRow}>
+                                    <View style={styles.detailIconBg}>
+                                        <Ionicons name="school" size={20} color="#6c5ce7" />
+                                    </View>
+                                    <View>
+                                        <Text style={styles.detailLabel}>School Name</Text>
+                                        <Text style={styles.detailValue}>{selectedRequest.name}</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <View style={styles.detailIconBg}>
+                                        <Ionicons name="location" size={20} color="#6c5ce7" />
+                                    </View>
+                                    <View>
+                                        <Text style={styles.detailLabel}>Address</Text>
+                                        <Text style={styles.detailValue}>{selectedRequest.address}</Text>
+                                        <Text style={styles.detailValue}>{selectedRequest.province}</Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.divider} />
+
+                            <View style={styles.detailSection}>
+                                <Text style={styles.detailSectionTitle}>Requester Profile</Text>
+                                <View style={styles.detailRow}>
+                                    <View style={[styles.detailIconBg, { backgroundColor: '#e3f2fd' }]}>
+                                        <Ionicons name="person" size={20} color="#2196f3" />
+                                    </View>
+                                    <View>
+                                        <Text style={styles.detailLabel}>Full Name</Text>
+                                        <Text style={styles.detailValue}>{selectedRequest.owner?.full_name || 'N/A'}</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <View style={[styles.detailIconBg, { backgroundColor: '#e3f2fd' }]}>
+                                        <Ionicons name="mail" size={20} color="#2196f3" />
+                                    </View>
+                                    <View>
+                                        <Text style={styles.detailLabel}>Email Address</Text>
+                                        <Text style={styles.detailValue}>{selectedRequest.owner?.email || 'N/A'}</Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.actionSection}>
+                                <Text style={styles.actionHint}>Review the details above before making a decision.</Text>
+                            </View>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <TouchableOpacity
+                                style={styles.modalRejectBtn}
+                                onPress={() => handleReject(selectedRequest.id)}
+                            >
+                                <Text style={styles.modalRejectText}>Reject Request</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.modalApproveBtn}
+                                onPress={() => handleApprove(selectedRequest.id)}
+                            >
+                                <Text style={styles.modalApproveText}>Approve School</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        );
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -158,10 +274,13 @@ export default function AdminDashboardScreen({ navigation }) {
                         />
                     )}
                 </View>
+                <RequestDetailsModal />
             </ResponsiveScreen>
         </SafeAreaView>
     );
 }
+
+
 
 const styles = StyleSheet.create({
     container: {
@@ -334,8 +453,128 @@ const styles = StyleSheet.create({
         color: '#2d3748',
         marginBottom: 8,
     },
+
     emptyText: {
         fontSize: 15,
         color: '#718096',
+    },
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 24,
+        maxHeight: '80%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1a202c',
+    },
+    closeButton: {
+        padding: 4,
+    },
+    modalBody: {
+        marginBottom: 20,
+    },
+    detailSection: {
+        marginBottom: 16,
+    },
+    detailSectionTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#718096',
+        textTransform: 'uppercase',
+        marginBottom: 12,
+        letterSpacing: 0.5,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    detailIconBg: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#ede9fe',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    detailLabel: {
+        fontSize: 12,
+        color: '#718096',
+        marginBottom: 2,
+    },
+    detailValue: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#2d3748',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#e2e8f0',
+        marginVertical: 16,
+    },
+    actionSection: {
+        backgroundColor: '#f7fafc',
+        padding: 12,
+        borderRadius: 8,
+        marginTop: 8,
+    },
+    actionHint: {
+        fontSize: 13,
+        color: '#718096',
+        textAlign: 'center',
+        fontStyle: 'italic',
+    },
+    modalFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingBottom: 10,
+    },
+    modalRejectBtn: {
+        flex: 1,
+        padding: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#fed7d7',
+        backgroundColor: '#fff5f5',
+        alignItems: 'center',
+    },
+    modalRejectText: {
+        color: '#e53e3e',
+        fontWeight: '600',
+        fontSize: 16,
+    },
+    modalApproveBtn: {
+        flex: 1,
+        padding: 14,
+        borderRadius: 12,
+        backgroundColor: '#00b894',
+        alignItems: 'center',
+    },
+    modalApproveText: {
+        color: '#ffffff',
+        fontWeight: '600',
+        fontSize: 16,
+    },
+    requesterHint: {
+        fontSize: 12,
+        color: '#718096',
+        marginBottom: 12,
+        fontStyle: 'italic',
     },
 });

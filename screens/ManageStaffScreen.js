@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, FlatList, Modal, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import ResponsiveScreen from '../components/ResponsiveScreen';
 
 export default function ManageStaffScreen({ navigation, route }) {
     const { schoolId, schoolName } = route.params;
+    const { colors, isDarkMode } = useTheme();
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalVisible, setModalVisible] = useState(false);
@@ -113,21 +115,24 @@ export default function ManageStaffScreen({ navigation, route }) {
     };
 
     const renderStaffItem = ({ item }) => (
-        <View style={styles.staffCard}>
-            <View style={styles.avatarPlaceholder}>
+        <View style={[styles.staffCard, {
+            backgroundColor: colors.surface,
+            borderColor: colors.border
+        }]}>
+            <View style={[styles.avatarPlaceholder, { backgroundColor: isDarkMode ? 'rgba(74, 144, 217, 0.15)' : 'rgba(74, 144, 217, 0.15)' }]}>
                 <Text style={styles.avatarText}>
                     {item.profiles?.full_name?.charAt(0) || '?'}
                 </Text>
             </View>
             <View style={{ flex: 1 }}>
-                <Text style={styles.staffName}>{item.profiles?.full_name || 'Unknown'}</Text>
-                <Text style={styles.staffEmail}>{item.profiles?.email}</Text>
+                <Text style={[styles.staffName, { color: colors.text }]}>{item.profiles?.full_name || 'Unknown'}</Text>
+                <Text style={[styles.staffEmail, { color: colors.textMuted }]}>{item.profiles?.email}</Text>
                 <Text style={styles.roleText}>{item.role.replace('_', ' ').toUpperCase()}</Text>
             </View>
             {item.role !== 'admin' && (
                 <TouchableOpacity
                     onPress={() => handleRemoveStaff(item.id, item.profiles?.full_name, item.role)}
-                    style={styles.removeButton}
+                    style={[styles.removeButton, { backgroundColor: isDarkMode ? 'rgba(255, 107, 107, 0.2)' : 'rgba(255, 107, 107, 0.1)' }]}
                 >
                     <Ionicons name="trash-outline" size={18} color="#ff6b6b" />
                 </TouchableOpacity>
@@ -136,29 +141,29 @@ export default function ManageStaffScreen({ navigation, route }) {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ResponsiveScreen maxWidth={800}>
-                <View style={styles.header}>
+                <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonIcon}>
                         <Ionicons name="chevron-back" size={28} color="#4a90d9" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Manage Staff</Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>Manage Staff</Text>
                     <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addButtonSmall}>
                         <Ionicons name="add" size={24} color="#ffffff" />
                     </TouchableOpacity>
                 </View>
 
                 <View style={styles.content}>
-                    <Text style={styles.schoolLabel}>{schoolName}</Text>
+                    <Text style={[styles.schoolLabel, { color: colors.textLight }]}>{schoolName}</Text>
 
                     {loading ? (
                         <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
                     ) : staff.length === 0 ? (
                         <View style={styles.emptyState}>
-                            <View style={styles.emptyIcon}>
-                                <Ionicons name="people-outline" size={48} color="#a3b1c6" />
+                            <View style={[styles.emptyIcon, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(163, 177, 198, 0.2)' }]}>
+                                <Ionicons name="people-outline" size={48} color={colors.textMuted} />
                             </View>
-                            <Text style={styles.emptyText}>No staff members yet.</Text>
+                            <Text style={[styles.emptyText, { color: colors.textMuted }]}>No staff members yet.</Text>
                         </View>
                     ) : (
                         <FlatList
@@ -179,9 +184,9 @@ export default function ManageStaffScreen({ navigation, route }) {
                 presentationStyle="pageSheet"
                 onRequestClose={() => setModalVisible(false)}
             >
-                <View style={styles.modalContainer}>
+                <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Add Staff Member</Text>
+                        <Text style={[styles.modalTitle, { color: colors.text }]}>Add Staff Member</Text>
                         <TouchableOpacity onPress={() => setModalVisible(false)}>
                             <Text style={styles.cancelLink}>Cancel</Text>
                         </TouchableOpacity>
@@ -189,11 +194,15 @@ export default function ManageStaffScreen({ navigation, route }) {
 
                     <View style={{ gap: 16 }}>
                         <View>
-                            <Text style={styles.label}>Email Address</Text>
+                            <Text style={[styles.label, { color: colors.text }]}>Email Address</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, {
+                                    backgroundColor: colors.input,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
                                 placeholder="staff@email.com"
-                                placeholderTextColor="#a0aec0"
+                                placeholderTextColor={colors.textMuted}
                                 value={email}
                                 onChangeText={setEmail}
                                 keyboardType="email-address"
@@ -202,15 +211,23 @@ export default function ManageStaffScreen({ navigation, route }) {
                         </View>
 
                         <View>
-                            <Text style={styles.label}>Role</Text>
+                            <Text style={[styles.label, { color: colors.text }]}>Role</Text>
                             <View style={styles.roleGrid}>
                                 {roles.map((r) => (
                                     <TouchableOpacity
                                         key={r.value}
-                                        style={[styles.roleOption, role === r.value && styles.roleOptionActive]}
+                                        style={[
+                                            styles.roleOption,
+                                            { backgroundColor: colors.surface, borderColor: colors.border },
+                                            role === r.value && styles.roleOptionActive
+                                        ]}
                                         onPress={() => setRole(r.value)}
                                     >
-                                        <Text style={[styles.roleOptionText, role === r.value && styles.roleOptionTextActive]}>
+                                        <Text style={[
+                                            styles.roleOptionText,
+                                            { color: colors.text },
+                                            role === r.value && styles.roleOptionTextActive
+                                        ]}>
                                             {r.label}
                                         </Text>
                                     </TouchableOpacity>

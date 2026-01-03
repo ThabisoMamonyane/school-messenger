@@ -15,6 +15,8 @@ export default function CreateSchoolScreen({ navigation }) {
     const [address, setAddress] = useState('');
     const [province, setProvince] = useState('');
     const [contactEmail, setContactEmail] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [website, setWebsite] = useState('');
     const [description, setDescription] = useState('');
     const [loading, setLoading] = useState(false);
     const [logoUri, setLogoUri] = useState(null);
@@ -101,7 +103,7 @@ export default function CreateSchoolScreen({ navigation }) {
                         name,
                         address,
                         province,
-                        contact_info: { email: contactEmail, description },
+                        contact_info: { email: contactEmail, phone: phoneNumber, website: website, description },
                         owner_id: user.id,
                         status: 'pending',
                         avatar_url: logoUrl
@@ -189,6 +191,31 @@ export default function CreateSchoolScreen({ navigation }) {
                                     value={contactEmail}
                                     onChangeText={setContactEmail}
                                     keyboardType="email-address"
+                                    autoCapitalize="none"
+                                />
+                            </View>
+
+                            <View>
+                                <Text style={styles.label}>Phone Number</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="e.g. +27 11 123 4567"
+                                    placeholderTextColor="#a0aec0"
+                                    value={phoneNumber}
+                                    onChangeText={setPhoneNumber}
+                                    keyboardType="phone-pad"
+                                />
+                            </View>
+
+                            <View>
+                                <Text style={styles.label}>Website</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="https://www.yourschool.com"
+                                    placeholderTextColor="#a0aec0"
+                                    value={website}
+                                    onChangeText={setWebsite}
+                                    keyboardType="url"
                                     autoCapitalize="none"
                                 />
                             </View>

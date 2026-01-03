@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
@@ -94,76 +95,135 @@ export default function MySchoolsScreen({ navigation }) {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ResponsiveScreen maxWidth={800}>
+                {/* Header */}
+                {/* Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
+                        <MaterialCommunityIcons name="chevron-left" size={28} color={colors.text} />
+                    </TouchableOpacity>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>My Schools</Text>
+                    <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('FindSchools')}>
+                        <MaterialCommunityIcons name="plus-circle-outline" size={28} color={colors.text} />
+                    </TouchableOpacity>
+                </View>
+
                 <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                    <View style={styles.header}>
-                        <Text style={[styles.title, { color: colors.text }]}>My Schools</Text>
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate('FindSchools')}
-                            style={[styles.addButton, { backgroundColor: colors.primary }]}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="add" size={20} color="white" />
-                            <Text style={styles.addButtonText}>Add School</Text>
-                        </TouchableOpacity>
+
+                    {/* Intro Section */}
+                    <View style={styles.introSection}>
+                        <Text style={[styles.introTitle, { color: colors.text }]}>Enrolled Schools</Text>
+                        <Text style={[styles.introSubtitle, { color: colors.textMuted }]}>
+                            Your personal learning space with all enrolled schools and communities.
+                        </Text>
+
+                        <View style={styles.pillsRow}>
+                            <View style={styles.pill}>
+                                <MaterialCommunityIcons name="school-outline" size={18} color="#FFFFFF" />
+                                <Text style={styles.pillText}>{mySchools.length} Schools</Text>
+                            </View>
+                            <View style={[styles.pill, { backgroundColor: isDarkMode ? colors.surface : '#E2E8F0' }]}>
+                                <MaterialCommunityIcons name="bookshelf" size={18} color={colors.textMuted} />
+                                <Text style={[styles.pillText, { color: colors.textMuted }]}>Active</Text>
+                            </View>
+                        </View>
                     </View>
 
-                    {mySchools.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <View style={[styles.emptyIcon, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(163, 177, 198, 0.2)' }]}>
-                                <Ionicons name="school-outline" size={56} color={colors.textMuted} />
-                            </View>
-                            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                                You haven't joined any schools yet.
-                            </Text>
-                            <TouchableOpacity
-                                style={[styles.findButton, { backgroundColor: colors.primary }]}
-                                onPress={() => navigation.navigate('FindSchools')}
-                                activeOpacity={0.8}
-                            >
-                                <Text style={styles.findButtonText}>Find a School</Text>
+
+
+                    {/* My Schools List */}
+                    <View style={styles.listSection}>
+                        <View style={styles.listHeader}>
+                            <Text style={[styles.listTitle, { color: colors.text }]}>My Schools</Text>
+                            <TouchableOpacity onPress={() => navigation.navigate('FindSchools')}>
+                                <Text style={[styles.seeAllText, { color: colors.textMuted }]}>Find More</Text>
                             </TouchableOpacity>
                         </View>
-                    ) : (
-                        <View>
-                            {mySchools.map((item) => (
-                                <TouchableOpacity
-                                    key={item.id}
-                                    style={[styles.schoolCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                                    onPress={() => navigation.getParent()?.replace('SchoolTabs', { school: item.schools, role: item.role })}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={styles.schoolHeader}>
-                                        <View style={[styles.schoolIcon, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(74, 144, 217, 0.15)' }]}>
-                                            {item.schools.avatar_url ? (
-                                                <Image
-                                                    source={{ uri: item.schools.avatar_url }}
-                                                    style={{ width: 48, height: 48, borderRadius: 14 }}
-                                                />
-                                            ) : (
-                                                <Ionicons name="school" size={24} color={colors.primary} />
-                                            )}
-                                        </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={[styles.schoolName, { color: colors.text }]}>{item.schools.name}</Text>
-                                            <Text style={[styles.schoolAddress, { color: colors.textMuted }]}>{item.schools.address}</Text>
-                                            <Text style={[styles.roleText, { color: colors.primary }]}>{item.role.toUpperCase()}</Text>
-                                        </View>
-                                    </View>
 
-                                    <View style={[styles.cardFooter, { borderTopColor: colors.border }]}>
-                                        <TouchableOpacity
-                                            onPress={() => handleLeaveSchool(item.schools.id, item.schools.name)}
-                                            style={styles.leaveButton}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Ionicons name="log-out-outline" size={16} color="#ff6b6b" />
-                                            <Text style={styles.leaveButtonText}>Leave School</Text>
-                                        </TouchableOpacity>
-                                    </View>
+                        {mySchools.length === 0 ? (
+                            <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
+                                <MaterialCommunityIcons name="school-outline" size={48} color={colors.textMuted} />
+                                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>No schools joined yet.</Text>
+                                <TouchableOpacity
+                                    style={styles.findButton}
+                                    onPress={() => navigation.navigate('FindSchools')}
+                                >
+                                    <Text style={styles.findButtonText}>Find a School</Text>
                                 </TouchableOpacity>
-                            ))}
-                        </View>
-                    )}
+                            </View>
+                        ) : (
+                            <View>
+                                {mySchools.map((item, index) => {
+                                    // Gradients for cards
+                                    const gradients = [
+                                        ['#E0C3FC', '#8EC5FC'], // Lavender
+                                        ['#ffecd2', '#fcb69f'], // Melon
+                                        ['#a1c4fd', '#c2e9fb'], // Light Blue
+                                    ];
+                                    const gradient = gradients[index % gradients.length];
+
+                                    return (
+                                        <TouchableOpacity
+                                            key={item.id}
+                                            style={styles.cardContainer}
+                                            onPress={() => navigation.navigate('Profile', { school: item.schools, role: item.role })}
+                                            activeOpacity={0.9}
+                                        >
+                                            <LinearGradient
+                                                colors={gradient}
+                                                start={{ x: 0, y: 0 }}
+                                                end={{ x: 1, y: 0 }}
+                                                style={styles.cardContent}
+                                            >
+                                                <View style={styles.cardRow}>
+                                                    <View style={styles.cardIconContainer}>
+                                                        {item.schools.avatar_url ? (
+                                                            <Image
+                                                                source={{ uri: item.schools.avatar_url }}
+                                                                style={styles.cardAvatar}
+                                                            />
+                                                        ) : (
+                                                            <MaterialCommunityIcons name="school-outline" size={24} color="#4A90D9" />
+                                                        )}
+                                                    </View>
+                                                    <View style={styles.cardTextContainer}>
+                                                        <Text style={[styles.cardSchoolName, { color: '#1E293B' }]}>{item.schools.name}</Text>
+                                                        <Text style={[styles.cardRole, { color: '#475569' }]}>{item.role.toUpperCase()}</Text>
+
+                                                        <View style={styles.cardStatsRow}>
+                                                            <View style={styles.cardStat}>
+                                                                <MaterialCommunityIcons name="map-marker-outline" size={14} color="#475569" />
+                                                                <Text style={styles.cardStatText}>{item.schools.province}</Text>
+                                                            </View>
+                                                            <View style={[styles.cardStat, { marginLeft: 12 }]}>
+                                                                <MaterialCommunityIcons name="account-group-outline" size={14} color="#475569" />
+                                                                <Text style={styles.cardStatText}>Member</Text>
+                                                            </View>
+                                                        </View>
+                                                    </View>
+
+                                                    <TouchableOpacity
+                                                        style={styles.cardArrow}
+                                                        onPress={() => navigation.navigate('Profile', { school: item.schools, role: item.role })}
+                                                    >
+                                                        <MaterialCommunityIcons name="chevron-right" size={20} color="#1E293B" />
+                                                    </TouchableOpacity>
+                                                </View>
+
+                                                <TouchableOpacity
+                                                    style={styles.leaveButtonAbs}
+                                                    onPress={() => handleLeaveSchool(item.schools.id, item.schools.name)}
+                                                >
+                                                    <MaterialCommunityIcons name="logout" size={20} color="#475569" />
+                                                </TouchableOpacity>
+                                            </LinearGradient>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        )}
+                    </View>
+
+                    <View style={{ height: 40 }} />
                 </ScrollView>
             </ResponsiveScreen>
         </SafeAreaView>
@@ -176,122 +236,177 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
-        padding: 20,
+        padding: 24,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 24,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        marginTop: 10,
     },
-    title: {
-        fontSize: 26,
+    headerTitle: {
+        fontSize: 18,
         fontWeight: '700',
+        color: '#1E293B',
     },
-    addButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#4a90d9',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 20,
-        shadowColor: '#3a7bc8',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
+    headerBtn: {
+        padding: 4,
     },
-    addButtonText: {
-        color: '#ffffff',
-        fontWeight: '600',
-        marginLeft: 6,
+    introSection: {
+        marginBottom: 32,
     },
-    emptyState: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: 60,
+    introTitle: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#1E293B',
+        marginBottom: 8,
     },
-    emptyIcon: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        alignItems: 'center',
-        justifyContent: 'center',
+    introSubtitle: {
+        fontSize: 14,
+        color: '#64748B',
+        lineHeight: 20,
         marginBottom: 20,
     },
-    emptyText: {
-        fontSize: 16,
-        textAlign: 'center',
-        marginBottom: 24,
+    pillsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    findButton: {
-        backgroundColor: '#4a90d9',
-        paddingHorizontal: 24,
-        paddingVertical: 14,
-        borderRadius: 16,
-        shadowColor: '#3a7bc8',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 5,
-    },
-    findButtonText: {
-        color: '#ffffff',
-        fontWeight: '700',
-        fontSize: 16,
-    },
-    schoolCard: {
+    pill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#4A90D9',
         borderRadius: 20,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-    },
-    schoolHeader: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-    },
-    schoolIcon: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 14,
-        overflow: 'hidden',
-    },
-    schoolName: {
-        fontSize: 17,
-        fontWeight: '700',
-    },
-    schoolAddress: {
-        fontSize: 14,
-        marginTop: 2,
-    },
-    roleText: {
-        fontSize: 11,
-        fontWeight: '700',
-        marginTop: 8,
-    },
-    cardFooter: {
-        borderTopWidth: 1,
-        marginTop: 12,
-        paddingTop: 12,
-        alignItems: 'flex-end',
-    },
-    leaveButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255, 107, 107, 0.1)',
-        paddingHorizontal: 14,
         paddingVertical: 8,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 107, 107, 0.2)',
+        paddingHorizontal: 16,
+        marginRight: 12,
     },
-    leaveButtonText: {
-        color: '#ff6b6b',
-        fontSize: 14,
+    pillLight: {
+        backgroundColor: '#E2E8F0',
+    },
+    pillText: {
+        color: '#FFFFFF',
+        fontSize: 13,
         fontWeight: '600',
         marginLeft: 6,
+    },
+    pillTextLight: {
+        color: '#475569',
+        marginLeft: 6,
+    },
+
+    listSection: {
+        marginBottom: 24,
+    },
+    listHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    listTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    seeAllText: {
+        fontSize: 13,
+        color: '#64748B',
+    },
+    emptyState: {
+        padding: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emptyStateText: {
+        color: '#94A3B8',
+        marginTop: 12,
+        marginBottom: 20,
+    },
+    findButton: {
+        backgroundColor: '#4A90D9',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 16,
+    },
+    findButtonText: {
+        color: '#FFFFFF',
+        fontWeight: '700',
+    },
+    cardContainer: {
+        marginBottom: 16,
+        borderRadius: 24,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 3,
+    },
+    cardContent: {
+        borderRadius: 24,
+        padding: 20,
+    },
+    cardRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    cardIconContainer: {
+        width: 56,
+        height: 56,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    cardAvatar: {
+        width: 56,
+        height: 56,
+        borderRadius: 18,
+    },
+    cardTextContainer: {
+        flex: 1,
+    },
+    cardSchoolName: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#1E293B',
+        marginBottom: 4,
+    },
+    cardRole: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#475569',
+        marginBottom: 8,
+        letterSpacing: 0.5,
+    },
+    cardStatsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    cardStat: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    cardStatText: {
+        fontSize: 11,
+        color: '#475569',
+        marginLeft: 4,
+        fontWeight: '500',
+    },
+    cardArrow: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    leaveButtonAbs: {
+        position: 'absolute',
+        top: 20,
+        right: 20,
+        zIndex: 10,
     },
 });

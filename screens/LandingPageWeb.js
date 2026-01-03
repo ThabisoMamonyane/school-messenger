@@ -66,10 +66,10 @@ const LANDING_PAGE_HTML = `
                     <a href="#architecture" class="text-sm font-medium text-slate-600 hover:text-navy-800 transition-colors">Architecture</a>
                     <a href="#pricing" class="text-sm font-medium text-slate-600 hover:text-navy-800 transition-colors">Tiers</a>
                     <a href="#roadmap" class="text-sm font-medium text-slate-600 hover:text-navy-800 transition-colors">Roadmap</a>
-                    <button onclick="parent.appNavigate('Login')" class="bg-navy-800 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-navy-900 transition-all hover:scale-105 hover:shadow-lg flex items-center gap-2 group">
+                    <a href="https://school-messenger-web.vercel.app" class="bg-navy-800 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-navy-900 transition-all hover:scale-105 hover:shadow-lg flex items-center gap-2 group no-underline">
                         <span>Login</span>
                         <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-0.5 transition-transform"></i>
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>

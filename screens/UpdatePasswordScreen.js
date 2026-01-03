@@ -74,7 +74,10 @@ export default function UpdatePasswordScreen({ navigation }) {
                             <View className="items-center mb-10">
                                 <View style={[styles.logoContainer, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.7)', borderColor: isDarkMode ? colors.border : 'rgba(255, 255, 255, 0.9)' }]}>
                                     <Image
-                                        source={require('../assets/main-logo.png')}
+                                        source={isDarkMode
+                                            ? require('../assets/Main SC Logo white.png')
+                                            : require('../assets/main-logo.png')
+                                        }
                                         style={{ width: '100%', height: '100%' }}
                                         resizeMode="contain"
                                     />

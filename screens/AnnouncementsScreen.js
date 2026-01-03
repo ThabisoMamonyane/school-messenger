@@ -1,61 +1,65 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity, RefreshControl, ActivityIndicator, LayoutAnimation, Platform, UIManager, StyleSheet } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet, Alert, Modal, TextInput, Animated, Easing, Linking } from 'react-native';
+
+
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '../lib/supabase';
-import { useFocusEffect } from '@react-navigation/native';
-import CreateAnnouncementModal from '../components/CreateAnnouncementModal';
-import { Linking } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { supabase } from '../lib/supabase';
+import { useFocusEffect } from '@react-navigation/native';
 import ResponsiveScreen from '../components/ResponsiveScreen';
 
-if (Platform.OS === 'android') {
-    if (UIManager.setLayoutAnimationEnabledExperimental) {
-        UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
-}
+import CreateAnnouncementModal from '../components/CreateAnnouncementModal';
 
-export default function AnnouncementsScreen({ navigation, route }) {
+export default function AnnouncementsScreen({ route, navigation }) {
     const { school, role } = route.params;
     const { user } = useAuth();
     const { colors, isDarkMode } = useTheme();
+
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState('All');
-    const [readAnnouncementIds, setReadAnnouncementIds] = useState(new Set());
-    const [expandedAnnouncementIds, setExpandedAnnouncementIds] = useState(new Set());
 
-    const categories = ['All', 'News', 'Academic', 'Sport', 'Letters', 'Homework', 'General'];
+    const [selectedCategory, setSelectedCategory] = useState('All');
+
+    // Modal State
+    const [modalVisible, setModalVisible] = useState(false);
+
+    // Animation for new items
+    const scrollY = useRef(new Animated.Value(0)).current;
+
+    const canPost = role === 'admin' || role === 'communications_officer';
+
+    // Get unique categories
+    const categories = ['All', ...new Set(announcements.map(a => a.category).filter(Boolean))];
+
+    // Filter announcements
+    const filteredAnnouncements = selectedCategory === 'All'
+        ? announcements
+        : announcements.filter(a => a.category === selectedCategory);
 
     const fetchAnnouncements = async () => {
         try {
-            const { data: announcementsData, error: announcementsError } = await supabase
+            const { data, error } = await supabase
                 .from('announcements')
                 .select(`
-                    *,
-                    author:author_id (
-                        full_name,
-                        avatar_url
-                    )
+                    id,
+                    title,
+                    content,
+                    created_at,
+                    attachment_url,
+                    attachment_name,
+                    category,
+                    profiles:author_id (full_name, email)
                 `)
                 .eq('school_id', school.id)
                 .order('created_at', { ascending: false });
 
-            if (announcementsError) throw announcementsError;
+            if (error) throw error;
+            setAnnouncements(data || []);
 
-            const { data: readData, error: readError } = await supabase
-                .from('announcement_reads')
-                .select('announcement_id')
-                .eq('user_id', user.id);
-
-            if (readError) throw readError;
-
-            setAnnouncements(announcementsData || []);
-            setReadAnnouncementIds(new Set(readData.map(item => item.announcement_id)));
         } catch (error) {
             console.error('Error fetching announcements:', error);
         } finally {
@@ -64,38 +68,33 @@ export default function AnnouncementsScreen({ navigation, route }) {
         }
     };
 
-    // Update App Badge when list or reads change
-    useEffect(() => {
-        if (Platform.OS === 'web') return;
-        const unreadCount = announcements.length - readAnnouncementIds.size;
-        Notifications.setBadgeCountAsync(unreadCount > 0 ? unreadCount : 0);
-    }, [announcements, readAnnouncementIds]);
+    const markAsRead = async () => {
+        try {
+            await supabase.rpc('mark_announcements_read', {
+                p_school_id: school.id,
+                p_user_id: user.id
+            });
+        } catch (error) {
+            console.error('Error marking announcements as read:', error);
+        }
+    };
 
     useFocusEffect(
         useCallback(() => {
             fetchAnnouncements();
+            markAsRead();
 
-            // Realtime: Listen for new announcements
-            const channel = supabase
-                .channel(`school_announcements:${school.id}`)
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'INSERT',
-                        schema: 'public',
-                        table: 'announcements',
-                        filter: `school_id=eq.${school.id}`,
-                    },
-                    (payload) => {
-                        console.log('New announcement received via realtime:', payload);
-                        // Trigger fetch to get full details (with author)
-                        fetchAnnouncements();
-                    }
-                )
+            // Realtime subscription
+            const subscription = supabase
+                .channel('announcements_channel')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'announcements', filter: `school_id=eq.${school.id}` }, (payload) => {
+                    // Refresh fully to get author details/attachments correctly
+                    fetchAnnouncements();
+                })
                 .subscribe();
 
             return () => {
-                supabase.removeChannel(channel);
+                supabase.removeChannel(subscription);
             };
         }, [school.id])
     );
@@ -105,225 +104,83 @@ export default function AnnouncementsScreen({ navigation, route }) {
         fetchAnnouncements();
     };
 
-    const canCreate = ['admin', 'teacher', 'communications_officer'].includes(role);
-
-    const formatTime = (dateString) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diff = (now - date) / 1000;
-
-        if (diff < 60) return 'Just now';
-        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-        return date.toLocaleDateString();
-    };
-
-    const markAsRead = async (announcementId) => {
-        if (readAnnouncementIds.has(announcementId)) return;
-
-        const newReadIds = new Set(readAnnouncementIds);
-        newReadIds.add(announcementId);
-        setReadAnnouncementIds(newReadIds);
-
-        try {
-            const { error } = await supabase
-                .from('announcement_reads')
-                .insert({
-                    user_id: user.id,
-                    announcement_id: announcementId
-                });
-
-            if (error) throw error;
-        } catch (error) {
-            console.error('Error marking announcement as read:', error);
-            const revertedIds = new Set(readAnnouncementIds);
-            revertedIds.delete(announcementId);
-            setReadAnnouncementIds(revertedIds);
-        }
-    };
-
-    const toggleExpand = (id) => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        const newExpandedIds = new Set(expandedAnnouncementIds);
-        if (newExpandedIds.has(id)) {
-            newExpandedIds.delete(id);
-        } else {
-            newExpandedIds.add(id);
-            markAsRead(id);
-        }
-        setExpandedAnnouncementIds(newExpandedIds);
-    };
-
-    const getCategoryColor = (cat) => {
-        const categoryThemes = {
-            'News': { bg: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)', text: isDarkMode ? '#ff8787' : '#ef4444' },
-            'Academic': { bg: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)', text: isDarkMode ? '#93c5fd' : '#3b82f6' },
-            'Sport': { bg: isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)', text: isDarkMode ? '#8ce99a' : '#22c55e' },
-            'Letters': { bg: isDarkMode ? 'rgba(168, 85, 247, 0.2)' : 'rgba(168, 85, 247, 0.1)', text: isDarkMode ? '#d8b4fe' : '#a855f7' },
-            'Homework': { bg: isDarkMode ? 'rgba(249, 115, 22, 0.2)' : 'rgba(249, 115, 22, 0.1)', text: isDarkMode ? '#ffc078' : '#f97316' },
-            'General': { bg: isDarkMode ? 'rgba(107, 114, 128, 0.2)' : 'rgba(107, 114, 128, 0.1)', text: isDarkMode ? '#cbd5e0' : '#6b7280' },
-        };
-        return categoryThemes[cat] || categoryThemes['General'];
+    const renderItem = ({ item, index }) => {
+        return <AnnouncementItem item={item} index={index} colors={colors} isDarkMode={isDarkMode} />;
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ResponsiveScreen maxWidth={800}>
                 {/* Header */}
-                <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-                    <TouchableOpacity onPress={() => navigation.navigate('Dashboard')} style={styles.backButton}>
-                        <Ionicons name="chevron-back" size={28} color={colors.primary} />
+                <View style={[styles.header, { backgroundColor: colors.surface }]}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
+                        <MaterialCommunityIcons name="chevron-left" size={28} color="#4a90d9" />
                     </TouchableOpacity>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>Announcements</Text>
-
-                    {canCreate ? (
-                        <TouchableOpacity
-                            style={[styles.addButton, { backgroundColor: colors.primary }]}
-                            onPress={() => setModalVisible(true)}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="add" size={24} color="#ffffff" />
+                    {canPost ? (
+                        <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.headerBtn}>
+                            <LinearGradient
+                                colors={['#4a90d9', '#5486E9']}
+                                style={styles.addBtnGradient}
+                            >
+                                <MaterialCommunityIcons name="plus" size={24} color="#fff" />
+                            </LinearGradient>
                         </TouchableOpacity>
                     ) : (
-                        <View style={{ width: 44 }} />
+                        <View style={{ width: 40 }} />
                     )}
                 </View>
 
                 {/* Category Filter */}
-                <View style={[styles.filterContainer, { backgroundColor: colors.surfaceActive, borderBottomColor: colors.border }]}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                            {categories.map((cat) => (
-                                <TouchableOpacity
-                                    key={cat}
-                                    style={[
-                                        styles.filterChip,
-                                        { backgroundColor: colors.surface, borderColor: colors.border },
-                                        selectedCategory === cat && [styles.filterChipActive, { backgroundColor: colors.primary, borderColor: colors.primary }]
-                                    ]}
-                                    onPress={() => setSelectedCategory(cat)}
-                                >
-                                    <Text style={[
-                                        styles.filterChipText,
-                                        { color: colors.textLight },
-                                        selectedCategory === cat && styles.filterChipTextActive
-                                    ]}>
-                                        {cat}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </ScrollView>
+                <View style={[styles.filterContainer, { backgroundColor: colors.background }]}>
+                    <FlatList
+                        horizontal
+                        data={categories}
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.filterContent}
+                        keyExtractor={item => item}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity
+                                onPress={() => setSelectedCategory(item)}
+                                style={[
+                                    styles.filterChip,
+                                    {
+                                        backgroundColor: selectedCategory === item ? colors.primary : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'),
+                                        borderColor: selectedCategory === item ? colors.primary : 'transparent'
+                                    }
+                                ]}
+                            >
+                                <Text style={[
+                                    styles.filterText,
+                                    { color: selectedCategory === item ? '#fff' : colors.text }
+                                ]}>
+                                    {item}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    />
                 </View>
 
-                <ScrollView
-                    style={styles.listContainer}
+                <FlatList
+                    data={filteredAnnouncements}
+                    renderItem={renderItem}
+                    keyExtractor={item => item.id}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
                     }
-                    showsVerticalScrollIndicator={false}
-                >
-                    {loading && !refreshing ? (
-                        <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
-                    ) : announcements.filter(item =>
-                        selectedCategory === 'All' || item.category === selectedCategory
-                    ).length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <View style={styles.emptyIcon}>
-                                <Ionicons name="megaphone-outline" size={48} color="#a3b1c6" />
+                    ListEmptyComponent={
+                        !loading && (
+                            <View style={styles.emptyState}>
+                                <MaterialCommunityIcons name="bullhorn-outline" size={64} color={colors.textMuted} style={{ opacity: 0.5 }} />
+                                <Text style={[styles.emptyText, { color: colors.textMuted }]}>No announcements yet.</Text>
                             </View>
-                            <Text style={styles.emptyText}>No announcements yet.</Text>
-                        </View>
-                    ) : (
-                        announcements
-                            .filter(item => selectedCategory === 'All' || item.category === selectedCategory)
-                            .map((item) => {
-                                const isRead = readAnnouncementIds.has(item.id);
-                                const isExpanded = expandedAnnouncementIds.has(item.id);
-                                const catColor = getCategoryColor(item.category);
+                        )
+                    }
+                />
 
-                                return (
-                                    <TouchableOpacity
-                                        key={item.id}
-                                        style={[styles.announcementCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                                        onPress={() => toggleExpand(item.id)}
-                                        activeOpacity={0.7}
-                                    >
-                                        {/* Indicator Bar */}
-                                        <View style={[styles.indicator, { backgroundColor: isRead ? colors.primary : '#ff6b6b' }]} />
-
-                                        <View style={{ flex: 1 }}>
-                                            {/* Author Row - Only shown when expanded */}
-                                            {isExpanded && (
-                                                <View style={[styles.expandedAuthorRow, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(74, 144, 217, 0.05)' }]}>
-                                                    <View style={[styles.avatarSmall, { backgroundColor: colors.backgroundDark }]}>
-                                                        {item.author?.avatar_url ? (
-                                                            <Image
-                                                                source={{ uri: item.author.avatar_url }}
-                                                                style={{ width: '100%', height: '100%', borderRadius: 12 }}
-                                                            />
-                                                        ) : (
-                                                            <Text style={{ fontSize: 14 }}>👤</Text>
-                                                        )}
-                                                    </View>
-                                                    <Text style={[styles.authorNameSmall, { color: colors.textLight }]}>{item.author?.full_name || 'Unknown'}</Text>
-                                                </View>
-                                            )}
-
-                                            <View style={styles.titleRow}>
-                                                <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={isExpanded ? undefined : 1}>
-                                                    {item.title}
-                                                </Text>
-                                                {item.category && (
-                                                    <View style={[styles.categoryBadge, { backgroundColor: catColor.bg }]}>
-                                                        <Text style={[styles.categoryText, { color: catColor.text }]}>
-                                                            {item.category}
-                                                        </Text>
-                                                    </View>
-                                                )}
-                                            </View>
-
-                                            <View style={styles.metaRow}>
-                                                <Text style={[styles.timeText, { color: colors.textMuted }]}>{formatTime(item.created_at)}</Text>
-                                            </View>
-
-                                            {isExpanded && (
-                                                <View style={{ marginTop: 12 }}>
-                                                    <Text style={[styles.contentText, { color: colors.textLight }]}>
-                                                        {item.content}
-                                                    </Text>
-
-                                                    {item.attachment_url && (
-                                                        <TouchableOpacity
-                                                            style={[styles.attachmentButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(74, 144, 217, 0.1)', borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(74, 144, 217, 0.2)' }]}
-                                                            onPress={() => Linking.openURL(item.attachment_url)}
-                                                        >
-                                                            <Ionicons name="attach" size={22} color={colors.primary} style={{ marginRight: 8 }} />
-                                                            <View style={{ flex: 1 }}>
-                                                                <Text style={[styles.attachmentName, { color: colors.primary }]}>
-                                                                    {item.attachment_name || 'Attachment'}
-                                                                </Text>
-                                                                <Text style={[styles.attachmentHint, { color: colors.textMuted }]}>Tap to open</Text>
-                                                            </View>
-                                                        </TouchableOpacity>
-                                                    )}
-
-                                                    {item.sent_via_push && (
-                                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-                                                            <Text style={[styles.pushText, { color: colors.textMuted }]}>Sent via Push</Text>
-                                                            <Ionicons name="notifications-outline" size={14} color={colors.textMuted} style={{ marginLeft: 4 }} />
-                                                        </View>
-                                                    )}
-                                                </View>
-                                            )}
-                                        </View>
-                                    </TouchableOpacity>
-                                );
-                            })
-                    )}
-                    <View style={{ height: 40 }} />
-                </ScrollView>
-
+                {/* Post Modal */}
                 <CreateAnnouncementModal
                     visible={modalVisible}
                     onClose={() => setModalVisible(false)}
@@ -335,6 +192,86 @@ export default function AnnouncementsScreen({ navigation, route }) {
     );
 }
 
+const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
+const AnnouncementItem = ({ item, index, colors, isDarkMode }) => {
+    const [expanded, setExpanded] = useState(false);
+
+    const handleOpenAttachment = useCallback(async () => {
+        if (item.attachment_url) {
+            try {
+                const supported = await Linking.canOpenURL(item.attachment_url);
+                if (supported) {
+                    await Linking.openURL(item.attachment_url);
+                } else {
+                    Alert.alert('Error', 'Cannot open this attachment');
+                }
+            } catch (error) {
+                console.error('Error opening URL:', error);
+                Alert.alert('Error', 'Failed to open attachment');
+            }
+        }
+    }, [item.attachment_url]);
+
+    return (
+        <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => setExpanded(!expanded)}
+            style={[styles.card, { backgroundColor: colors.surface, borderLeftColor: index % 3 === 0 ? '#4a90d9' : index % 3 === 1 ? '#6c5ce7' : '#00b894' }]}
+        >
+            <View style={styles.cardHeader}>
+                <View style={styles.authorContainer}>
+                    <View style={[styles.authorIcon, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(74,144,217,0.1)' }]}>
+                        <MaterialCommunityIcons name="account" size={16} color={colors.primary} />
+                    </View>
+                    <Text style={[styles.authorText, { color: colors.textMuted }]}>
+                        {item.profiles?.full_name || 'School Admin'}
+                    </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {item.attachment_url && (
+                        <MaterialCommunityIcons name="paperclip" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
+                    )}
+                    <Text style={[styles.dateText, { color: colors.textMuted }]}>{formatDate(item.created_at)}</Text>
+                </View>
+            </View>
+
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{item.title}</Text>
+
+            {expanded && (
+                <View style={{ marginTop: 8 }}>
+                    <Text style={[styles.cardContent, { color: colors.textMuted }]}>{item.content}</Text>
+                    {item.attachment_url && (
+                        <TouchableOpacity
+                            style={[styles.attachmentBtn, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#f0f9ff', borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#e0f2fe' }]}
+                            onPress={handleOpenAttachment}
+                        >
+                            <MaterialCommunityIcons name="file-document-outline" size={20} color={colors.primary} />
+                            <Text style={[styles.attachmentBtnText, { color: colors.primary }]}>
+                                {item.attachment_name || 'View Attachment'}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            )}
+
+            {!expanded && (
+                <View style={{ alignItems: 'center', marginTop: 4 }}>
+                    <MaterialCommunityIcons name="chevron-down" size={20} color={colors.textMuted} style={{ opacity: 0.5 }} />
+                </View>
+            )}
+        </TouchableOpacity>
+    );
+};
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -344,191 +281,162 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(163, 177, 198, 0.2)',
-    },
-    backButton: {
-        padding: 4,
+        paddingVertical: 14,
+        marginBottom: 8,
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '700',
-        color: '#2d3748',
     },
-    addButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        backgroundColor: '#4a90d9',
+    headerBtn: {
+        padding: 4,
+    },
+    addBtnGradient: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    filterContainer: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.6)',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(163, 177, 198, 0.2)',
-    },
-    filterChip: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.7)',
-        borderWidth: 1,
-        borderColor: 'rgba(163, 177, 198, 0.3)',
-    },
-    filterChipActive: {
-        backgroundColor: '#4a90d9',
-        borderColor: '#4a90d9',
-    },
-    filterChipText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#4a5568',
-    },
-    filterChipTextActive: {
-        color: '#ffffff',
-    },
-    listContainer: {
-        flex: 1,
+    listContent: {
         padding: 16,
+        paddingBottom: 100,
     },
-    emptyState: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 80,
-    },
-    emptyIcon: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: 'rgba(163, 177, 198, 0.2)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
-    },
-    emptyText: {
-        fontSize: 16,
-        color: '#718096',
-    },
-    announcementCard: {
-        flexDirection: 'row',
-        backgroundColor: 'rgba(255, 255, 255, 0.75)',
-        borderRadius: 20,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.8)',
-    },
-    indicator: {
-        width: 5,
-        borderRadius: 3,
-        marginRight: 14,
-        marginVertical: 4,
+    card: {
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 10,
+        borderLeftWidth: 4,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 10,
-    },
-    avatar: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(163, 177, 198, 0.2)',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-        overflow: 'hidden',
+        marginBottom: 4,
     },
-    authorName: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#2d3748',
-    },
-    expandedAuthorRow: {
+    authorContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 10,
-        backgroundColor: 'rgba(74, 144, 217, 0.05)',
-        padding: 8,
-        borderRadius: 12,
     },
-    avatarSmall: {
+    authorIcon: {
         width: 24,
         height: 24,
         borderRadius: 12,
-        backgroundColor: 'rgba(163, 177, 198, 0.2)',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 8,
-        overflow: 'hidden',
     },
-    authorNameSmall: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#4a5568',
-    },
-    timeText: {
+    authorText: {
         fontSize: 12,
-        color: '#a0aec0',
+        fontWeight: '600',
     },
-    metaRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 4,
-    },
-    titleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    dateText: {
+        fontSize: 11,
     },
     cardTitle: {
-        flex: 1,
-        fontSize: 15,
+        fontSize: 16,
         fontWeight: '700',
-        color: '#2d3748',
+        marginBottom: 2,
     },
-    categoryBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
+    cardContent: {
+        fontSize: 15,
+        lineHeight: 22,
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: 100,
+    },
+    emptyText: {
+        marginTop: 16,
+        fontSize: 16,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 24,
+        minHeight: '60%',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+    },
+    input: {
+        borderWidth: 1,
         borderRadius: 12,
-        marginLeft: 8,
+        padding: 16,
+        fontSize: 16,
+        marginBottom: 16,
     },
-    categoryText: {
-        fontSize: 11,
-        fontWeight: '600',
+    textArea: {
+        minHeight: 150,
     },
-    contentText: {
-        fontSize: 14,
-        color: '#4a5568',
-        lineHeight: 20,
-        marginBottom: 8,
+    postButton: {
+        paddingVertical: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 8,
+        shadowColor: "#4a90d9",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
-    attachmentButton: {
+    postButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    attachmentBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(74, 144, 217, 0.1)',
-        borderRadius: 12,
         padding: 12,
-        marginTop: 8,
+        borderRadius: 12,
+        marginTop: 12,
         borderWidth: 1,
-        borderColor: 'rgba(74, 144, 217, 0.2)',
     },
-    attachmentName: {
+    attachmentBtnText: {
+        marginLeft: 8,
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    filterContainer: {
+        paddingVertical: 10,
+    },
+    filterContent: {
+        paddingHorizontal: 16,
+    },
+    filterChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginRight: 8,
+        borderWidth: 1,
+    },
+    filterText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#4a90d9',
-    },
-    attachmentHint: {
-        fontSize: 12,
-        color: '#718096',
-    },
-    pushText: {
-        fontSize: 12,
-        color: '#a0aec0',
     },
 });

@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, StyleSheet, RefreshControl, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
@@ -17,9 +18,12 @@ export default function SchoolDashboardScreen({ route, navigation }) {
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [errorMsg, setErrorMsg] = useState(null);
+    const [imageError, setImageError] = useState(false);
 
     const [unreadCount, setUnreadCount] = useState(0);
+    const [totalAnnouncements, setTotalAnnouncements] = useState(0);
     const [recentActivity, setRecentActivity] = useState([]);
+    const [upcomingEvents, setUpcomingEvents] = useState([]);
 
     const fetchAllSchools = async () => {
         if (!user) return;
@@ -103,6 +107,7 @@ export default function SchoolDashboardScreen({ route, navigation }) {
             const readIds = new Set(reads?.map(r => r.announcement_id));
             const unread = allAnnouncements?.filter(a => !readIds.has(a.id)).length || 0;
             setUnreadCount(unread);
+            setTotalAnnouncements(allAnnouncements?.length || 0);
 
             // 2. Get Recent Activity (Latest 3 announcements)
             const { data: recent, error: recentError } = await supabase
@@ -120,11 +125,31 @@ export default function SchoolDashboardScreen({ route, navigation }) {
         }
     };
 
+    const fetchUpcomingEvents = async () => {
+        if (!school.id) return;
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const { data, error } = await supabase
+                .from('school_events')
+                .select('*')
+                .eq('school_id', school.id)
+                .gte('event_date', today)
+                .order('event_date', { ascending: true })
+                .limit(5);
+
+            if (error) throw error;
+            setUpcomingEvents(data || []);
+        } catch (error) {
+            console.error('Error fetching upcoming events:', error);
+        }
+    };
+
     useFocusEffect(
         useCallback(() => {
             fetchDashboardStats();
             fetchMyGroups();
             fetchAllSchools();
+            fetchUpcomingEvents();
         }, [user, school.id])
     );
 
@@ -133,7 +158,8 @@ export default function SchoolDashboardScreen({ route, navigation }) {
         await Promise.all([
             fetchDashboardStats(),
             fetchMyGroups(),
-            fetchAllSchools()
+            fetchAllSchools(),
+            fetchUpcomingEvents()
         ]);
         setRefreshing(false);
     };
@@ -144,170 +170,235 @@ export default function SchoolDashboardScreen({ route, navigation }) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ResponsiveScreen maxWidth={800}>
-                {/* School Switcher - Pinned to Top */}
-                {allSchools.length > 1 && (
-                    <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
-                        <View style={styles.switcherSection}>
-                            <Text style={[styles.switcherLabel, { color: colors.textMuted }]}>SWITCH SCHOOL</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                {allSchools.map((item) => {
-                                    const isActive = item.schools.id === school.id;
-                                    return (
-                                        <TouchableOpacity
-                                            key={item.id}
-                                            style={[
-                                                styles.schoolChip,
-                                                { backgroundColor: colors.surface, borderColor: colors.border },
-                                                isActive && { backgroundColor: isDarkMode ? 'rgba(99, 179, 237, 0.15)' : 'rgba(74, 144, 217, 0.1)' }
-                                            ]}
-                                            onPress={() => {
-                                                if (!isActive) {
-                                                    navigation.getParent()?.replace('SchoolTabs', { school: item.schools, role: item.role });
-                                                }
-                                            }}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={[
-                                                styles.schoolChipIcon,
-                                                { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' },
-                                                isActive && { backgroundColor: isDarkMode ? 'rgba(99, 179, 237, 0.2)' : 'rgba(74, 144, 217, 0.15)' }
-                                            ]}>
-                                                {item.schools.avatar_url ? (
-                                                    <Image
-                                                        source={{ uri: item.schools.avatar_url }}
-                                                        style={{ width: 32, height: 32, borderRadius: 10 }}
-                                                    />
-                                                ) : (
-                                                    <Ionicons
-                                                        name="school"
-                                                        size={18}
-                                                        color={isActive ? "#4a90d9" : "#a0aec0"}
-                                                    />
-                                                )}
-                                            </View>
-                                            <View style={{ marginRight: 8 }}>
-                                                <Text style={[
-                                                    styles.schoolChipName,
-                                                    { color: colors.text },
-                                                    isActive && { color: colors.primary }
-                                                ]}>
-                                                    {item.schools.name}
-                                                </Text>
-                                                <Text style={[styles.schoolChipRole, { color: colors.textMuted }]}>{item.role}</Text>
-                                            </View>
-
-                                            {isActive && (
-                                                <Ionicons name="checkmark-circle" size={20} color="#4a90d9" />
-                                            )}
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </ScrollView>
-                        </View>
-                    </View>
-                )}
-
                 <ScrollView
-                    style={[styles.scrollView, { backgroundColor: colors.background }]}
+                    style={styles.scrollView}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 100 }}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
                     }
                 >
-
-                    {/* School Header */}
-                    <View style={[styles.headerCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <Text style={[styles.welcomeGreeting, { color: colors.primary }]}>Welcome, {profile?.full_name || 'User'}</Text>
-                        <Text style={[styles.schoolName, { color: colors.text }]}>{school.name}</Text>
-                        <Text style={[styles.schoolAddress, { color: colors.textMuted }]}>{school.address}, {school.province}</Text>
-                        <Text style={[styles.dashboardBadgeText, { color: colors.primary }]}>{role.toUpperCase()} DASHBOARD</Text>
-                    </View>
-
-                    {/* Quick Stats */}
-                    <View style={[styles.statsCard, { backgroundColor: isDarkMode ? 'rgba(99, 179, 237, 0.1)' : 'rgba(74, 144, 217, 0.1)', borderColor: isDarkMode ? 'rgba(99, 179, 237, 0.2)' : 'rgba(74, 144, 217, 0.2)' }]}>
-                        <View style={[styles.statsIcon, { backgroundColor: isDarkMode ? 'rgba(99, 179, 237, 0.15)' : 'rgba(74, 144, 217, 0.15)' }]}>
-                            <Ionicons name="notifications-outline" size={24} color={colors.primary} />
-                        </View>
-                        <View>
-                            <Text style={[styles.statsLabel, { color: colors.primary }]}>Quick Stats</Text>
-                            <Text style={[styles.statsText, { color: colors.text }]}>
-                                You have <Text style={[styles.statsHighlight, { color: colors.primary }]}>{unreadCount}</Text> unread announcement{unreadCount !== 1 ? 's' : ''}.
-                            </Text>
-                        </View>
-                    </View>
-
-                    {/* My Groups */}
-                    <View style={[styles.groupsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <View style={styles.cardHeader}>
-                            <View style={[styles.cardIconContainer, { backgroundColor: isDarkMode ? 'rgba(108, 92, 231, 0.2)' : 'rgba(108, 92, 231, 0.15)' }]}>
-                                <Ionicons name="people-outline" size={24} color="#6c5ce7" />
+                    {/* Header Section */}
+                    <View style={styles.headerSection}>
+                        <View style={styles.headerProfile}>
+                            {school.avatar_url && !imageError ? (
+                                <Image
+                                    source={{ uri: school.avatar_url }}
+                                    style={styles.headerAvatar}
+                                    onError={() => setImageError(true)}
+                                />
+                            ) : (
+                                <View style={[styles.headerAvatar, { backgroundColor: isDarkMode ? colors.surface : '#E2E8F0', alignItems: 'center', justifyContent: 'center' }]}>
+                                    <MaterialCommunityIcons name="school-outline" size={24} color={colors.primary} />
+                                </View>
+                            )}
+                            <View>
+                                <Text style={[styles.headerGreeting, { color: colors.text }]}>Hello, {profile?.full_name?.split(' ')[0] || 'User'}</Text>
+                                <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>{role} @ {school.name}</Text>
                             </View>
-                            <Text style={[styles.cardTitle, { color: colors.text }]}>My Groups</Text>
                         </View>
+                        <TouchableOpacity
+                            style={[styles.notificationButton, { backgroundColor: colors.surface }]}
+                            onPress={() => navigation.navigate('Announcements')}
+                        >
+                            <MaterialCommunityIcons name="bell-badge-outline" size={24} color={colors.text} />
+                            {unreadCount > 0 && <View style={styles.notificationDot} />}
+                        </TouchableOpacity>
+                    </View>
 
-                        {errorMsg ? (
-                            <Text style={{ color: '#e53e3e', fontStyle: 'italic', marginVertical: 8 }}>{errorMsg}</Text>
-                        ) : myGroups.length === 0 ? (
-                            <Text style={styles.emptyText}>You haven't joined any groups yet.</Text>
-                        ) : (
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupsList}>
-                                {myGroups.map((group) => (
+                    {/* School Switcher */}
+                    {allSchools.length > 1 && (
+                        <View style={styles.schoolSwitcherContainer}>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.schoolSwitcherContent}>
+                                {allSchools.map((member) => (
                                     <TouchableOpacity
-                                        key={group.id}
-                                        style={[styles.groupItem, { backgroundColor: isDarkMode ? '#2d3748' : '#ffffff' }]}
-                                        onPress={() => navigation.navigate('GroupChat', { group, schoolId: school.id })}
-                                        activeOpacity={0.7}
+                                        key={member.id}
+                                        style={[
+                                            styles.schoolSwitcherItem,
+                                            { backgroundColor: colors.surface, borderColor: colors.border },
+                                            member.schools.id === school.id && styles.schoolSwitcherItemActive
+                                        ]}
+                                        onPress={() => {
+                                            if (member.schools.id !== school.id) {
+                                                navigation.getParent()?.replace('SchoolTabs', { school: member.schools, role: member.role });
+                                            }
+                                        }}
+                                        activeOpacity={0.8}
                                     >
-                                        <View style={styles.groupIcon}>
-                                            <Ionicons name="chatbubbles" size={20} color="#ffffff" />
-                                        </View>
-                                        <Text style={[styles.groupName, { color: colors.text }]} numberOfLines={2}>{group.name}</Text>
-                                        <View style={styles.arrowIcon}>
-                                            <Ionicons name="arrow-forward" size={14} color={colors.textMuted} />
-                                        </View>
+                                        <Image
+                                            source={{ uri: member.schools.avatar_url || 'https://via.placeholder.com/40' }}
+                                            style={styles.schoolSwitcherAvatar}
+                                        />
+                                        <Text style={[
+                                            styles.schoolSwitcherName,
+                                            { color: colors.textMuted },
+                                            member.schools.id === school.id && styles.schoolSwitcherNameActive
+                                        ]}>
+                                            {member.schools.name}
+                                        </Text>
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
-                        )}
+                        </View>
+                    )}
+
+                    {/* Banner Section */}
+                    <LinearGradient
+                        colors={['#89CFF0', '#4A90D9']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.bannerContainer}
+                    >
+                        <View style={styles.bannerContent}>
+                            <Text style={styles.bannerTitle}>{school.name}</Text>
+                            <Text style={styles.bannerText}>
+                                Welcome to your digital dashboard. Access your courses, events, and announcements in one place.
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.bannerButton}
+                                onPress={() => navigation.navigate('SchoolProfile', { school, role })}
+                            >
+                                <Text style={styles.bannerButtonText}>View Profile</Text>
+                                <MaterialCommunityIcons name="chevron-right" size={16} color="#4A90D9" />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.bannerIconContainer}>
+                            <MaterialCommunityIcons name="trophy-award" size={80} color="rgba(255,255,255,0.3)" />
+                        </View>
+                    </LinearGradient>
+
+                    {/* Stats Section */}
+                    <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Dashboard Stats</Text>
+                        <TouchableOpacity onPress={onRefresh}>
+                            <Text style={[styles.seeAllText, { color: colors.textMuted }]}>Refresh</Text>
+                        </TouchableOpacity>
                     </View>
 
-                    {/* Recent Activity */}
-                    <View style={[styles.activityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <Text style={[styles.activityTitle, { color: colors.text }]}>Recent Activity</Text>
-
-                        {recentActivity.length === 0 ? (
-                            <View style={styles.emptyActivity}>
-                                <Ionicons name="time-outline" size={32} color={colors.textMuted} />
-                                <Text style={[styles.emptyText, { color: colors.textMuted }]}>No recent activity to show.</Text>
+                    <View style={styles.statsRow}>
+                        {/* Announcements Card (Unread Only) */}
+                        <TouchableOpacity
+                            style={[styles.statCard, { backgroundColor: colors.surface }]}
+                            onPress={() => navigation.navigate('Announcements')}
+                            activeOpacity={0.7}
+                        >
+                            <View style={[styles.statRing, { borderColor: '#8B5CF6' }]}>
+                                <View style={[styles.statRingInner, { backgroundColor: isDarkMode ? 'rgba(139, 92, 246, 0.2)' : '#F3E8FF' }]}>
+                                    <MaterialCommunityIcons name="bullhorn-outline" size={24} color="#8B5CF6" />
+                                </View>
                             </View>
-                        ) : (
-                            <View>
-                                {recentActivity.map((item, index) => (
+                            <Text style={[styles.statValue, { color: colors.text }]}>{unreadCount}</Text>
+                            <Text style={[styles.statLabel, { color: colors.textMuted }]} numberOfLines={1}>Announcements</Text>
+                        </TouchableOpacity>
+
+                        {/* Upcoming Events Card */}
+                        <TouchableOpacity
+                            style={[styles.statCard, { backgroundColor: colors.surface }]}
+                            onPress={() => navigation.navigate('SchoolCalendar', { school })}
+                            activeOpacity={0.7}
+                        >
+                            <View style={[styles.statRing, { borderColor: '#4A90D9' }]}>
+                                <View style={[styles.statRingInner, { backgroundColor: isDarkMode ? 'rgba(74, 144, 217, 0.2)' : '#EBF8FF' }]}>
+                                    <MaterialCommunityIcons name="calendar-check-outline" size={24} color="#4A90D9" />
+                                </View>
+                            </View>
+                            <Text style={[styles.statValue, { color: colors.text }]}>{upcomingEvents.length}</Text>
+                            <Text style={[styles.statLabel, { color: colors.textMuted }]} numberOfLines={1}>Calendar</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* My Groups Section */}
+                    <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>My Groups</Text>
+                        <TouchableOpacity onPress={() => navigation.navigate('ManageGroups', { schoolId: school.id, schoolName: school.name, role: role })}>
+                            <Text style={[styles.seeAllText, { color: colors.textMuted }]}>See All</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {myGroups.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyStateText}>No groups joined yet</Text>
+                        </View>
+                    ) : (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupsList}>
+                            {myGroups.map((group, index) => {
+                                // Rotate gradients for a dynamic look
+                                const gradients = [
+                                    ['#A78BFA', '#8B5CF6'], // Purple
+                                    ['#FBBF24', '#F59E0B'], // Amber
+                                    ['#34D399', '#10B981'], // Emerald
+                                    ['#60A5FA', '#3B82F6'], // Blue
+                                ];
+                                const gradient = gradients[index % gradients.length];
+
+                                return (
                                     <TouchableOpacity
-                                        key={item.id}
-                                        style={[
-                                            styles.activityItem,
-                                            index !== recentActivity.length - 1 && [styles.activityItemBorder, { borderBottomColor: colors.border }]
-                                        ]}
-                                        onPress={() => navigation.navigate('Announcements')}
-                                        activeOpacity={0.7}
+                                        key={group.id}
+                                        onPress={() => navigation.navigate('GroupChat', { group, schoolId: school.id })}
+                                        activeOpacity={0.9}
                                     >
-                                        <View style={[styles.activityIcon, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.15)' }]}>
-                                            <Ionicons name="megaphone-outline" size={20} color="#f59e0b" />
-                                        </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={[styles.activityItemTitle, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-                                            <Text style={[styles.activityItemContent, { color: colors.textMuted }]} numberOfLines={2}>{item.content}</Text>
-                                        </View>
-                                        <Text style={[styles.activityItemDate, { color: colors.textMuted }]}>{formatDate(item.created_at)}</Text>
+                                        <LinearGradient
+                                            colors={gradient}
+                                            style={styles.groupCard}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                        >
+                                            <View style={styles.groupIconBg}>
+                                                <MaterialCommunityIcons name="account-group-outline" size={20} color={gradient[1]} />
+                                            </View>
+                                            <Text style={styles.groupCardTitle} numberOfLines={2}>{group.name}</Text>
+                                            <Text style={styles.groupCardSubtitle}>
+                                                <MaterialCommunityIcons name="account-outline" size={14} color="rgba(255,255,255,0.8)" /> Member
+                                            </Text>
+
+                                            <View style={styles.groupArrow}>
+                                                <MaterialCommunityIcons name="arrow-right-circle" size={32} color="rgba(255,255,255,0.9)" />
+                                            </View>
+                                        </LinearGradient>
                                     </TouchableOpacity>
-                                ))}
-                            </View>
+                                );
+                            })}
+                        </ScrollView>
+                    )}
+
+                    {/* Recent Activity List */}
+                    <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
+                        <TouchableOpacity onPress={() => navigation.navigate('Announcements')}>
+                            <Text style={[styles.seeAllText, { color: colors.textMuted }]}>View All</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={[styles.activityList, { backgroundColor: colors.surface }]}>
+                        {recentActivity.length === 0 ? (
+                            <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>No recent activity</Text>
+                        ) : (
+                            recentActivity.map((item) => (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    style={styles.activityItem}
+                                    onPress={() => navigation.navigate('Announcements')}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[styles.activityIconContainer, { backgroundColor: isDarkMode ? 'rgba(14, 165, 233, 0.2)' : '#E0F2FE' }]}>
+                                        <MaterialCommunityIcons name="bell-ring-outline" size={20} color="#0EA5E9" />
+                                    </View>
+                                    <View style={styles.activityContent}>
+                                        <Text style={[styles.activityTitle, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+                                        <Text style={[styles.activitySubtitle, { color: colors.textMuted }]}>{formatDate(item.created_at)}</Text>
+                                    </View>
+                                    <TouchableOpacity style={styles.activityActionBtn}>
+                                        <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textMuted} />
+                                    </TouchableOpacity>
+                                </TouchableOpacity>
+                            ))
                         )}
                     </View>
+
+                    {/* School Switcher (Re-added at bottom or accessible via header if needed, keeping simple matching design for now) */}
+
                 </ScrollView>
             </ResponsiveScreen>
         </SafeAreaView>
@@ -322,231 +413,291 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 20,
     },
-    switcherSection: {
-        marginBottom: 20,
+    headerSection: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+        marginTop: 10,
     },
-    switcherLabel: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#718096',
-        letterSpacing: 1,
-        marginBottom: 10,
-    },
-    schoolChip: {
+    headerProfile: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.6)',
-        borderRadius: 16,
-        padding: 12,
-        marginRight: 12,
-        minWidth: 160,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.8)',
     },
-    schoolChipActive: {
-        backgroundColor: 'rgba(74, 144, 217, 0.1)',
-        borderColor: 'rgba(74, 144, 217, 0.3)',
-    },
-    schoolChipIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 10,
-        backgroundColor: 'rgba(163, 177, 198, 0.2)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 10,
-    },
-    schoolChipIconActive: {
-        backgroundColor: 'rgba(74, 144, 217, 0.15)',
-    },
-    schoolChipName: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#4a5568',
-    },
-    schoolChipNameActive: {
-        color: '#4a90d9',
-    },
-    schoolChipRole: {
-        fontSize: 11,
-        color: '#718096',
-        textTransform: 'capitalize',
-    },
-    headerCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.7)',
-        borderRadius: 24,
-        padding: 24,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.8)',
-    },
-    welcomeGreeting: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#4a90d9',
-        marginBottom: 8,
-    },
-    schoolName: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#2d3748',
-    },
-    schoolAddress: {
-        fontSize: 15,
-        color: '#718096',
-        marginTop: 4,
-    },
-    dashboardBadgeText: {
-        color: '#4a90d9',
-        fontSize: 12,
-        fontWeight: '700',
-        letterSpacing: 0.5,
-        marginTop: 12,
-    },
-    statsCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(74, 144, 217, 0.1)',
-        borderRadius: 20,
-        padding: 20,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(74, 144, 217, 0.2)',
-    },
-    statsIcon: {
+    headerAvatar: {
         width: 48,
         height: 48,
-        borderRadius: 14,
-        backgroundColor: 'rgba(74, 144, 217, 0.15)',
+        borderRadius: 24,
+        marginRight: 12,
+        backgroundColor: '#e2e8f0'
+    },
+    headerGreeting: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1E293B',
+    },
+    headerSubtitle: {
+        fontSize: 13,
+        color: '#64748B',
+        fontWeight: '500',
+    },
+    notificationButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
     },
-    statsLabel: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#4a90d9',
-        marginBottom: 4,
-    },
-    statsText: {
-        fontSize: 14,
-        color: '#4a5568',
-    },
-    statsHighlight: {
-        fontWeight: '700',
-        color: '#4a90d9',
-    },
-    activityCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.7)',
-        borderRadius: 24,
-        padding: 20,
+    notificationDot: {
+        position: 'absolute',
+        top: 10,
+        right: 12,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#EF4444',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.8)',
+        borderColor: '#FFFFFF',
     },
-    activityTitle: {
-        fontSize: 18,
+    bannerContainer: {
+        borderRadius: 24,
+        padding: 24,
+        marginBottom: 32,
+        position: 'relative',
+        overflow: 'hidden',
+        minHeight: 160,
+    },
+    bannerContent: {
+        zIndex: 2,
+        flex: 1,
+        paddingRight: 60,
+    },
+    bannerTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        marginBottom: 8,
+    },
+    bannerText: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.9)',
+        marginBottom: 16,
+        lineHeight: 18,
+    },
+    bannerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        alignSelf: 'flex-start',
+    },
+    bannerButtonText: {
+        fontSize: 12,
         fontWeight: '700',
-        color: '#2d3748',
+        color: '#4A90D9',
+        marginRight: 4,
+    },
+    bannerIconContainer: {
+        position: 'absolute',
+        bottom: -10,
+        right: -10,
+        zIndex: 1,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: 16,
     },
-    emptyActivity: {
-        alignItems: 'center',
-        paddingVertical: 24,
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1E293B',
     },
-    emptyText: {
-        color: '#718096',
+    seeAllText: {
+        fontSize: 13,
+        color: '#64748B',
+        fontWeight: '500',
+    },
+    statsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 32,
+        gap: 12,
+    },
+    statCard: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 12,
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    statRing: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 2.5,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+    },
+    statRingInner: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    statValue: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#1E293B',
+        marginBottom: 2,
+    },
+    statLabel: {
+        fontSize: 11,
+        color: '#64748B',
+        fontWeight: '600',
+    },
+    groupsList: {
+        marginBottom: 32,
+        overflow: 'visible',
+    },
+    groupCard: {
+        width: 160,
+        height: 180,
+        borderRadius: 24,
+        padding: 20,
+        marginRight: 16,
+        justifyContent: 'space-between',
+    },
+    groupIconBg: {
+        width: 40,
+        height: 40,
+        borderRadius: 14,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    groupCardTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginTop: 12,
+    },
+    groupCardSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.8)',
+        marginTop: 4,
+    },
+    groupArrow: {
+        alignItems: 'flex-end',
+        marginTop: 12,
+    },
+    emptyState: {
+        padding: 20,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        marginBottom: 32,
+        alignItems: 'center',
+    },
+    emptyStateText: {
+        color: '#94A3B8',
         fontStyle: 'italic',
-        marginTop: 8,
+    },
+    activityList: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        padding: 8,
+        marginBottom: 50,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
     },
     activityItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 14,
+        padding: 12,
+        marginBottom: 8,
     },
-    activityItemBorder: {
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(163, 177, 198, 0.2)',
-    },
-    activityIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(245, 158, 11, 0.15)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 14,
-    },
-    activityItemTitle: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#2d3748',
-    },
-    activityItemContent: {
-        fontSize: 13,
-        color: '#718096',
-        marginTop: 2,
-    },
-    activityItemDate: {
-        fontSize: 11,
-        color: '#a0aec0',
-        marginLeft: 8,
-    },
-    groupsCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.7)',
-        borderRadius: 24,
-        padding: 20,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.8)',
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    cardIconContainer: {
+    activityIconContainer: {
         width: 48,
         height: 48,
-        borderRadius: 14,
-        backgroundColor: 'rgba(108, 92, 231, 0.15)',
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 16,
     },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#2d3748',
+    activityContent: {
+        flex: 1,
     },
-    groupsList: {
+    activityTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#1E293B',
+        marginBottom: 2,
+    },
+    activitySubtitle: {
+        fontSize: 12,
+        color: '#94A3B8',
+    },
+    activityActionBtn: {
+        padding: 8,
+    },
+    schoolSwitcherContainer: {
+        marginBottom: 20,
+    },
+    schoolSwitcherContent: {
+        paddingRight: 10,
+    },
+    schoolSwitcherItem: {
         flexDirection: 'row',
-    },
-    groupItem: {
-        backgroundColor: '#ffffff',
-        borderRadius: 16,
-        padding: 16,
-        marginRight: 12,
-        width: 140,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
-    },
-    groupIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: '#6c5ce7',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 12,
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 24,
+        marginRight: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
     },
-    groupName: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#2d3748',
-        marginBottom: 8,
-        height: 40,
+    schoolSwitcherItemActive: {
+        backgroundColor: '#4A90D9',
+        borderColor: '#4A90D9',
     },
-    arrowIcon: {
-        alignItems: 'flex-end',
+    schoolSwitcherAvatar: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        marginRight: 8,
+        backgroundColor: '#F1F5F9'
+    },
+    schoolSwitcherName: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    schoolSwitcherNameActive: {
+        color: '#FFFFFF',
     },
 });

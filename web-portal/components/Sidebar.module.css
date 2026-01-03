@@ -1,0 +1,364 @@
+.sidebar {
+    width: 280px;
+    height: 100vh;
+    background: #0f172a;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 50;
+    padding: 32px 0;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+}
+
+/* USER PROFILE */
+.userProfile {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 24px 32px;
+    border-bottom: 1.5px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 32px;
+}
+
+.avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 18px;
+    background: #4a90d9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 20px;
+    color: white;
+    box-shadow: 0 8px 16px rgba(74, 144, 217, 0.2);
+    flex-shrink: 0;
+}
+
+.userInfo {
+    flex: 1;
+    overflow: hidden;
+}
+
+.userName {
+    font-size: 16px;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.3px;
+}
+
+.userRole {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.notificationBtn {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.notificationBtn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    transform: translateY(-2px);
+}
+
+/* MENU */
+.scrollContent {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 16px;
+}
+
+.menuSection {
+    margin-bottom: 32px;
+}
+
+.sectionTitle {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #475569;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    margin-bottom: 16px;
+    padding-left: 16px;
+}
+
+.nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    border-radius: 18px;
+    color: #94a3b8;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    font-weight: 700;
+    position: relative;
+    font-size: 15px;
+}
+
+.navItem:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.03);
+    transform: translateX(4px);
+}
+
+.active {
+    background: #1e293b;
+    color: white;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.activeIndicator {
+    position: absolute;
+    right: 20px;
+    width: 6px;
+    height: 6px;
+    background: #4a90d9;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(74, 144, 217, 0.5);
+}
+
+.icon {
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s;
+}
+
+.navItem:hover .icon {
+    transform: scale(1.1);
+}
+
+/* FOOTER */
+.footer {
+    padding: 24px 20px 0;
+    border-top: 1.5px solid rgba(255, 255, 255, 0.05);
+}
+
+.logoutBtn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    border: none;
+    background: rgba(244, 63, 94, 0.05);
+    color: #f43f5e;
+    font-weight: 800;
+    border-radius: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.logoutBtn:hover {
+    background: #f43f5e;
+    color: white;
+    box-shadow: 0 8px 16px rgba(244, 63, 94, 0.2);
+}
+
+/* SCHOOL SWITCHER */
+.schoolSwitcher {
+    padding: 0 24px;
+    margin-bottom: 24px;
+}
+
+.schoolSwitcherLabel {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #475569;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.schoolDropdownTrigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1.5px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.schoolDropdownTrigger:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.schoolAvatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4a90d9, #3b82f6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    color: white;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.schoolAvatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.schoolInfo {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+}
+
+.schoolName {
+    font-size: 14px;
+    font-weight: 700;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.schoolRole {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.dropdownArrow {
+    color: #64748b;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.dropdownArrow.open {
+    transform: rotate(180deg);
+}
+
+.schoolDropdownMenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 8px;
+    background: #1e293b;
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 8px;
+    z-index: 100;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.schoolOption {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+}
+
+.schoolOption:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.schoolOption.selected {
+    background: rgba(74, 144, 217, 0.15);
+    border: 1px solid rgba(74, 144, 217, 0.3);
+}
+
+.schoolOptionAvatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 12px;
+    color: white;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.schoolOptionAvatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.schoolOptionInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.schoolOptionName {
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.schoolOptionRole {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.checkMark {
+    color: #4a90d9;
+    flex-shrink: 0;
+}
+
+.dropdownWrapper {
+    position: relative;
+}

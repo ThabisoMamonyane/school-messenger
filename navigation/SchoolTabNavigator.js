@@ -1,9 +1,10 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import * as Notifications from 'expo-notifications';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { View, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +12,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useIsFocused } from '@react-navigation/native';
 
 import SchoolDashboardScreen from '../screens/SchoolDashboardScreen';
+import PageTransition from '../components/PageTransition';
+
 import AnnouncementsScreen from '../screens/AnnouncementsScreen';
 import SchoolProfileScreen from '../screens/SchoolProfileScreen';
 import SchoolMenuScreen from '../screens/SchoolMenuScreen';
@@ -24,29 +27,24 @@ export default function SchoolTabNavigator({ route }) {
     const { user } = useAuth();
     const { colors, isDarkMode } = useTheme();
     const isFocused = useIsFocused();
+    const insets = useSafeAreaInsets();
     const [unreadCount, setUnreadCount] = useState(0);
 
     const fetchUnreadCount = async () => {
         if (!user) return;
         try {
-            // Get total announcements count
-            const { count: totalCount, error: countError } = await supabase
-                .from('announcements')
-                .select('*', { count: 'exact', head: true })
-                .eq('school_id', school.id);
+            const { data, error } = await supabase
+                .rpc('get_unread_announcements_count', {
+                    p_school_id: school.id,
+                    p_user_id: user.id
+                });
 
-            if (countError) throw countError;
+            if (error) {
+                console.error('Error fetching unread count:', error);
+                return;
+            }
 
-            // Get read count
-            const { count: readCount, error: readError } = await supabase
-                .from('announcement_reads')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', user.id);
-
-            if (readError) throw readError;
-
-            const unread = (totalCount || 0) - (readCount || 0);
-            const finalCount = unread > 0 ? unread : 0;
+            const finalCount = data || 0;
             setUnreadCount(finalCount);
 
             // Sync with App Icon Badge
@@ -61,28 +59,28 @@ export default function SchoolTabNavigator({ route }) {
             fetchUnreadCount();
         }
     }, [isFocused, school.id]);
-
     return (
         <Tab.Navigator
             screenOptions={({ route }) => ({
+                unmountOnBlur: true,
                 tabBarIcon: ({ focused, color, size }) => {
                     let iconName;
 
                     if (route.name === 'Dashboard') {
-                        iconName = focused ? 'home' : 'home-outline';
+                        iconName = focused ? 'view-dashboard' : 'view-dashboard-outline';
                     } else if (route.name === 'Announcements') {
-                        iconName = focused ? 'megaphone' : 'megaphone-outline';
+                        iconName = focused ? 'bullhorn' : 'bullhorn-outline';
                     } else if (route.name === 'Profile') {
                         iconName = focused ? 'school' : 'school-outline';
                     } else if (route.name === 'Menu') {
-                        iconName = focused ? 'menu' : 'menu-outline';
+                        iconName = focused ? 'menu' : 'menu';
                     } else if (route.name === 'Schools') {
-                        iconName = focused ? 'albums' : 'albums-outline';
+                        iconName = focused ? 'book-open-page-variant' : 'book-open-page-variant-outline';
                     }
 
                     return (
                         <View style={focused ? [styles.iconContainerActive, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(74, 144, 217, 0.12)' }] : styles.iconContainer}>
-                            <Ionicons name={iconName} size={22} color={color} />
+                            <MaterialCommunityIcons name={iconName} size={24} color={color} />
                         </View>
                     );
                 },
@@ -101,8 +99,9 @@ export default function SchoolTabNavigator({ route }) {
                         : (Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.95)'),
                     borderTopWidth: 0,
                     elevation: 0,
-                    height: Platform.OS === 'ios' ? 85 : 70,
+                    height: Platform.OS === 'ios' ? (60 + insets.bottom) : (60 + insets.bottom),
                     paddingTop: 8,
+                    paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
                     paddingHorizontal: 8,
                     shadowColor: isDarkMode ? '#000000' : '#a3b1c6',
                     shadowOffset: { width: 0, height: -4 },
@@ -123,38 +122,43 @@ export default function SchoolTabNavigator({ route }) {
         >
             <Tab.Screen
                 name="Dashboard"
-                component={SchoolDashboardScreen}
                 initialParams={{ school, role }}
-            />
+            >
+                {props => <PageTransition><SchoolDashboardScreen {...props} /></PageTransition>}
+            </Tab.Screen>
             <Tab.Screen
                 name="Announcements"
-                component={AnnouncementsScreen}
                 initialParams={{ school, role }}
                 options={{
                     tabBarBadge: unreadCount > 0 ? unreadCount : null,
                     tabBarBadgeStyle: { backgroundColor: '#e53e3e', fontSize: 10, height: 16, minWidth: 16 },
                 }}
-            />
+            >
+                {props => <PageTransition><AnnouncementsScreen {...props} /></PageTransition>}
+            </Tab.Screen>
             <Tab.Screen
                 name="Profile"
-                component={SchoolProfileScreen}
                 initialParams={{ school, role }}
-            />
+            >
+                {props => <PageTransition><SchoolProfileScreen {...props} /></PageTransition>}
+            </Tab.Screen>
 
             {/* Only show Schools tab for parents */}
             {isParent && (
                 <Tab.Screen
                     name="Schools"
-                    component={MySchoolsScreen}
                     initialParams={{ school, role }}
-                />
+                >
+                    {props => <PageTransition><MySchoolsScreen {...props} /></PageTransition>}
+                </Tab.Screen>
             )}
 
             <Tab.Screen
                 name="Menu"
-                component={SchoolMenuScreen}
                 initialParams={{ school, role }}
-            />
+            >
+                {props => <PageTransition><SchoolMenuScreen {...props} /></PageTransition>}
+            </Tab.Screen>
         </Tab.Navigator>
     );
 }

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Messenger - Production Readiness Test Plan</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        :root {
+            --primary: #2563eb;
+            --secondary: #1e293b;
+            --success: #16a34a;
+            --bg-page: #f8fafc;
+            --text-main: #334155;
+            --border: #e2e8f0;
+        }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg-page);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 50px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            color: var(--secondary);
+            font-size: 2.2rem;
+        }
+        .subtitle {
+            color: #64748b;
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+        }
+        h2 {
+            margin-top: 40px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+        .test-section {
+            margin-bottom: 30px;
+        }
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.1s;
+        }
+        .checklist-item:hover {
+            background: #f1f5f9;
+        }
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            margin-right: 15px;
+            border: 2px solid #cbd5e1;
+            border-radius: 4px;
+            flex-shrink: 0;
+            margin-top: 2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* Interactive Checkbox Logic via CSS/JS would be here, but for print we keep it static styling */
+        .checkbox::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: transparent;
+            border-radius: 2px;
+        }
+        .content {
+            flex: 1;
+        }
+        .title {
+            font-weight: 600;
+            color: var(--secondary);
+            display: block;
+            margin-bottom: 4px;
+        }
+        .desc {
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+        .tag {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-left: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .tag-critical {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .tag-normal {
+            background: #e0f2fe;
+            color: #075985;
+        }
+        .note-box {
+            background: #fff7ed;
+            border-left: 4px solid #f97316;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 0.95rem;
+            color: #9a3412;
+            border-radius: 0 4px 4px 0;
+        }
+        @media print {
+            body {
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 30px;
+            }
+            .print-btn {
+                display: none;
+            }
+        }
+        .print-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--secondary);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">🖨️ Print Test Plan</button>
+    <div class="container">
+        <h1>🚀 Production Test Plan</h1>
+        <div class="subtitle">A Comprehensive A-Z Checklist for Soft Launch Readiness</div>
+        <div class="note-box">
+            <strong>Pre-Requisites:</strong> Ensure you have the Web Portal running on your desktop and the Mobile App
+            installed on a physical device (or simulator). create two test accounts: one <strong>Admin User</strong> and
+            one <strong>Parent User</strong>.
+        </div>
+        <!-- PHASE 1: AUTHENTICATION -->
+        <h2>Phase 1: Authentication & Onboarding</h2>
+        <div class="test-section">
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">New User Sign Up <span class="tag tag-critical">Critical</span></span>
+                    <span class="desc">Register a new account via the Mobile App. Verify success message and automatic
+                        login.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Email Validation (If enabled)</span>
+                    <span class="desc">Check if email verification link arrives and works (if configured in
+                        Supabase).</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Logout Functionality</span>
+                    <span class="desc">Log out from the Profile screen. Ensure user is returned to Welcome/Login
+                        screen.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Login (Existing User)</span>
+                    <span class="desc">Log back in with the newly created credentials. Verify quick access.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Forgot Password Flow</span>
+                    <span class="desc">Request a password reset. Verify email arrival and deeplink opening the reset
+                        screen.</span>
+                </div>
+            </div>
+        </div>
+        <!-- PHASE 2: MOBILE APP EXPERIENCE -->
+        <h2>Phase 2: Mobile App Experience</h2>
+        <div class="test-section">
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Feed Scrolling & Performance</span>
+                    <span class="desc">Scroll rapidly through the Announcements feed. Ensure no lag or visual
+                        glitches.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">View Announcement Details</span>
+                    <span class="desc">Tap an announcement. Ensure it expands or opens detail view correctly.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Attachment Handling <span class="tag tag-critical">Critical</span></span>
+                    <span class="desc">Find an announcement with a Paperclip icon. Tap it. Verify the attachment
+                        opens/downloads.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Tab Navigation Transition</span>
+                    <span class="desc">Switch between Home, Dashboard, and Profile tabs. Verify the "Slide Left"
+                        animation works smoothly.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Join a School (Parent Role)</span>
+                    <span class="desc">Use "Find Schools" to search and join a new school. Verify it appears in "My
+                        Schools".</span>
+                </div>
+            </div>
+        </div>
+        <!-- PHASE 3: WEB PORTAL ADMINISTRATION -->
+        <h2>Phase 3: Web Portal (Admin)</h2>
+        <div class="test-section">
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Dashboard Stats Load</span>
+                    <span class="desc">Login as Admin. Verify "Unread Announcements" and "Total Students" stats load
+                        without error.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Create Announcement (Text Only) <span
+                            class="tag tag-critical">Critical</span></span>
+                    <span class="desc">Post a simple text announcement. Verify "Success" toast.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Create Announcement (With Attachment)</span>
+                    <span class="desc">Create a post and upload a PDF/Image. Verify upload progress and final
+                        submission.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Manage Staff</span>
+                    <span class="desc">Navigate to Staff page. Attempt to Invite a new teacher by email.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">School Profile Update</span>
+                    <span class="desc">Edit school address or phone number. Save. Verify changes persist.</span>
+                </div>
+            </div>
+        </div>
+        <!-- PHASE 4: CROSS-PLATFORM SYNC -->
+        <h2>Phase 4: Real-time & Cross-Platform</h2>
+        <div class="test-section">
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">End-to-End Broadcast <span class="tag tag-critical">Critical</span></span>
+                    <span class="desc">1. Open Mobile App (keep open). <br>2. On Web, post a new announcement. <br>3.
+                        Verify Mobile App updates automatically <strong>without</strong> refreshing.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Push Notification Delivery</span>
+                    <span class="desc">Close the Mobile App (background). Post from Web. Verify Push Notification
+                        arrives on device.</span>
+                </div>
+            </div>
+            <div class="checklist-item">
+                <div class="checkbox"></div>
+                <div class="content">
+                    <span class="title">Deep Link from Push</span>
+                    <span class="desc">Tap the received notification. Verify App opens directly to the
+                        announcement.</span>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 50px; text-align: center; color: #94a3b8; font-size: 0.9rem;">
+            School Messenger • Test Plan v1.0
+        </div>
+    </div>
+    <script>
+        // Simple script to make checkboxes interactive for the screen view
+        document.querySelectorAll('.checklist-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const box = item.querySelector('.checkbox');
+                if (box.style.backgroundColor === 'var(--success)') {
+                    box.style.backgroundColor = 'transparent';
+                    box.style.borderColor = '#cbd5e1';
+                    box.innerHTML = '';
+                } else {
+                    box.style.backgroundColor = 'var(--success)';
+                    box.style.borderColor = 'var(--success)';
+                    box.innerHTML = '<span style="color:white; font-size:14px;">✓</span>';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

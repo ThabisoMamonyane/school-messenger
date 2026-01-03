@@ -44,7 +44,10 @@ export default function WelcomeScreen({ navigation }) {
                         {/* Logo centered on screen with floating animation */}
                         <View style={styles.logoSection}>
                             <Animated.Image
-                                source={require('../assets/main-logo.png')}
+                                source={isDarkMode
+                                    ? require('../assets/Main SC Logo white.png')
+                                    : require('../assets/main-logo.png')
+                                }
                                 style={[
                                     styles.logo,
                                     { transform: [{ translateY: floatAnim }] }

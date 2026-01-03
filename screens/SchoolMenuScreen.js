@@ -1,5 +1,6 @@
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform, Switch } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -64,30 +65,35 @@ export default function SchoolMenuScreen({ navigation, route }) {
             ]}
             onPress={onPress}
             activeOpacity={0.7}
-            disabled={!onPress}
+            disabled={!onPress && !trailing}
         >
             <View style={[styles.menuIconContainer, { backgroundColor: iconBg || (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)') }]}>
-                <Ionicons name={icon} size={22} color={iconColor || colors.text} />
+                <MaterialCommunityIcons name={icon} size={22} color={iconColor || colors.text} />
             </View>
             <Text style={[styles.menuItemText, { color: colors.text }, danger && styles.menuItemTextDanger]}>{title}</Text>
             {trailing ? trailing : (
-                <Ionicons name="chevron-forward" size={20} color={danger ? "#ff6b6b" : colors.textMuted} />
+                <MaterialCommunityIcons name="chevron-right" size={20} color={danger ? "#ff6b6b" : colors.textMuted} />
             )}
         </TouchableOpacity>
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ResponsiveScreen maxWidth={800}>
-                <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                    {/* Header */}
-                    <TouchableOpacity
-                        onPress={handleSwitchSchool}
-                        style={styles.backButton}
-                    >
-                        <Ionicons name="chevron-back" size={24} color="#4a90d9" />
-                        <Text style={styles.backText}>Switch School</Text>
+                {/* Header */}
+                <View style={[styles.header, { backgroundColor: colors.surface }]}>
+                    <TouchableOpacity onPress={handleSwitchSchool} style={styles.headerBtn}>
+                        <MaterialCommunityIcons name="chevron-left" size={28} color="#4a90d9" />
                     </TouchableOpacity>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>Menu</Text>
+                    <View style={{ width: 28 }} />
+                </View>
+
+                <ScrollView
+                    style={styles.scrollView}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 100 }}
+                >
 
                     {/* Admin/Staff Options */}
                     {role !== 'parent' && (
@@ -95,7 +101,7 @@ export default function SchoolMenuScreen({ navigation, route }) {
                             <Text style={styles.sectionTitle}>SCHOOL MANAGEMENT</Text>
 
                             <MenuItem
-                                icon="people-outline"
+                                icon="account-group-outline"
                                 iconColor="#4a90d9"
                                 iconBg="rgba(74, 144, 217, 0.15)"
                                 title="Manage Staff"
@@ -103,7 +109,7 @@ export default function SchoolMenuScreen({ navigation, route }) {
                             />
 
                             <MenuItem
-                                icon="settings-outline"
+                                icon="cog-outline"
                                 iconColor="#6c5ce7"
                                 iconBg="rgba(108, 92, 231, 0.15)"
                                 title="School Settings"
@@ -111,7 +117,7 @@ export default function SchoolMenuScreen({ navigation, route }) {
                             />
 
                             <MenuItem
-                                icon="library-outline"
+                                icon="bookshelf"
                                 iconColor="#00b894"
                                 iconBg="rgba(0, 184, 148, 0.15)"
                                 title="Manage Groups"
@@ -121,7 +127,7 @@ export default function SchoolMenuScreen({ navigation, route }) {
                             <View style={styles.divider} />
 
                             <MenuItem
-                                icon="add-circle-outline"
+                                icon="plus-circle-outline"
                                 iconColor="#4a90d9"
                                 iconBg="rgba(74, 144, 217, 0.1)"
                                 title="Register a School"
@@ -134,7 +140,7 @@ export default function SchoolMenuScreen({ navigation, route }) {
                     <View style={styles.section}>
                         <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>PREFERENCES</Text>
                         <MenuItem
-                            icon={isDarkMode ? "moon" : "sunny-outline"}
+                            icon={isDarkMode ? "weather-night" : "white-balance-sunny"}
                             iconColor={isDarkMode ? "#ffd43b" : "#f59e0b"}
                             title="Dark Mode"
                             trailing={
@@ -151,19 +157,26 @@ export default function SchoolMenuScreen({ navigation, route }) {
                     <View style={styles.section}>
                         <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>SUPPORT</Text>
                         <MenuItem
+                            icon="swap-horizontal"
+                            iconColor="#4a90d9"
+                            iconBg="rgba(74, 144, 217, 0.15)"
+                            title="Switch School"
+                            onPress={handleSwitchSchool}
+                        />
+                        <MenuItem
                             icon="help-circle-outline"
                             iconColor="#6c5ce7"
                             title="Technical Support"
                             onPress={() => navigation.navigate('TechnicalSupport', { schoolId: school.id })}
                         />
                         <MenuItem
-                            icon="shield-checkmark-outline"
+                            icon="shield-check-outline"
                             iconColor="#00b894"
                             title="Privacy Policy"
                             onPress={() => navigation.navigate('PrivacyPolicy')}
                         />
                         <MenuItem
-                            icon="log-out-outline"
+                            icon="logout"
                             iconColor="#ff6b6b"
                             title="Sign Out"
                             onPress={handleSignOut}
@@ -174,7 +187,7 @@ export default function SchoolMenuScreen({ navigation, route }) {
                     <View style={styles.section}>
                         <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>DANGER ZONE</Text>
                         <MenuItem
-                            icon="trash-outline"
+                            icon="trash-can-outline"
                             iconColor="#ff6b6b"
                             title="Delete Account"
                             onPress={handleDeleteAccount}
@@ -191,29 +204,28 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        marginBottom: 8,
+    },
+    headerTitle: { fontSize: 18, fontWeight: '700' },
+    headerBtn: { padding: 4 },
     scrollView: {
         flex: 1,
         padding: 20,
-    },
-    backButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    backText: {
-        color: '#4a90d9',
-        fontSize: 17,
-        fontWeight: '600',
-        marginLeft: 4,
     },
     section: {
         marginBottom: 24,
     },
     sectionTitle: {
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: '700',
         color: '#718096',
-        letterSpacing: 1,
+        letterSpacing: 0.5,
         marginBottom: 12,
         marginLeft: 4,
     },
@@ -226,6 +238,11 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.8)',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+        elevation: 1,
     },
     menuItemDanger: {
         backgroundColor: 'rgba(255, 107, 107, 0.08)',
@@ -250,7 +267,8 @@ const styles = StyleSheet.create({
     },
     divider: {
         height: 1,
-        backgroundColor: 'rgba(163, 177, 198, 0.3)',
+        backgroundColor: 'rgba(163, 177, 198, 0.2)',
         marginVertical: 16,
+        marginHorizontal: 8,
     },
 });

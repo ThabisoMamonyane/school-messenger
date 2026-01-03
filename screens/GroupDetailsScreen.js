@@ -4,17 +4,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import ResponsiveScreen from '../components/ResponsiveScreen';
 import { useFocusEffect } from '@react-navigation/native';
+
+import AddMemberModal from '../components/AddMemberModal';
 
 export default function GroupDetailsScreen({ navigation, route }) {
     const { group, schoolId } = route.params;
     const { user } = useAuth();
+    const { colors, isDarkMode } = useTheme();
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalVisible, setModalVisible] = useState(false);
-    const [searchEmail, setSearchEmail] = useState('');
-    const [searching, setSearching] = useState(false);
 
     // Check if current user is an admin of this group (or the creator)
     const isGroupAdmin = group.created_by === user.id || members.some(m => m.user_id === user.id && m.role === 'admin');
@@ -51,66 +53,39 @@ export default function GroupDetailsScreen({ navigation, route }) {
         }, [group.id])
     );
 
-    const handleAddMember = async () => {
-        if (!searchEmail.trim()) {
-            Alert.alert('Error', 'Please enter an email address');
-            return;
-        }
+    const handleAddMembers = async (selectedUsers) => {
+        if (!selectedUsers || selectedUsers.length === 0) return;
 
-        setSearching(true);
         try {
-            const { data: profiles, error: searchError } = await supabase
-                .from('profiles')
-                .select('id, full_name, email')
-                .eq('email', searchEmail.toLowerCase().trim())
-                .single();
+            const toInsert = selectedUsers.map(u => ({
+                group_id: group.id,
+                user_id: u.id,
+                role: 'member'
+            }));
 
-            if (searchError || !profiles) {
-                Alert.alert('Not Found', 'No user found with that email address');
-                setSearching(false);
-                return;
-            }
+            // Supabase upsert or insert-ignore logic using custom function typically, 
+            // OR we just try insert and ignore duplicates if possible. 
+            // Simple insert might fail if one exists.
 
-            const { data: schoolMember } = await supabase
-                .from('school_members')
-                .select('id')
-                .eq('school_id', schoolId)
-                .eq('user_id', profiles.id)
-                .single();
+            // To be safe, we can check existence or just rely on 'ignoreDuplicates' if using newer supabase-js, 
+            // but standard insert throws error on conflict.
+            // Let's iterate or use 'upsert' with ignoreDuplicates equivalent logic if available.
+            // Actually, best to just filter out existing members first in the UI, but here we can:
 
-            if (!schoolMember) {
-                Alert.alert('Error', 'This user is not a member of the school');
-                setSearching(false);
-                return;
-            }
+            // NOTE: The AddMemberModal typically shouldn't show users already in group?
+            // I'll add logic to excludedIds prop passed to modal to exclude current members.
 
-            const { error: insertError } = await supabase
+            const { error } = await supabase
                 .from('group_members')
-                .insert([
-                    {
-                        group_id: group.id,
-                        user_id: profiles.id,
-                        role: 'member'
-                    }
-                ]);
+                .upsert(toInsert, { onConflict: 'group_id,user_id', ignoreDuplicates: true });
 
-            if (insertError) {
-                if (insertError.code === '23505') {
-                    Alert.alert('Already Added', 'This user is already in the group');
-                } else {
-                    throw insertError;
-                }
-            } else {
-                Alert.alert('Success', `${profiles.full_name} has been added to the group`);
-                setSearchEmail('');
-                setModalVisible(false);
-                fetchMembers();
-            }
+            if (error) throw error;
+
+            Alert.alert('Success', `${selectedUsers.length} member(s) added successfully`);
+            fetchMembers();
         } catch (error) {
-            console.error('Error adding member:', error);
+            console.error('Error adding members:', error);
             Alert.alert('Error', error.message);
-        } finally {
-            setSearching(false);
         }
     };
 
@@ -143,18 +118,21 @@ export default function GroupDetailsScreen({ navigation, route }) {
     };
 
     const renderMemberItem = ({ item }) => (
-        <View style={styles.memberCard}>
-            <View style={styles.memberAvatar}>
+        <View style={[styles.memberCard, {
+            backgroundColor: colors.surface,
+            borderColor: colors.border
+        }]}>
+            <View style={[styles.memberAvatar, { backgroundColor: isDarkMode ? 'rgba(74, 144, 217, 0.15)' : 'rgba(74, 144, 217, 0.15)' }]}>
                 <Text style={styles.memberAvatarText}>
                     {item.profile?.full_name?.charAt(0) || '?'}
                 </Text>
             </View>
             <View style={{ flex: 1 }}>
-                <Text style={styles.memberName}>
+                <Text style={[styles.memberName, { color: colors.text }]}>
                     {item.profile?.full_name || 'Unknown User'}
                 </Text>
-                <Text style={styles.memberEmail}>{item.profile?.email}</Text>
-                <Text style={[styles.roleText, item.role === 'admin' && styles.roleTextAdmin]}>
+                <Text style={[styles.memberEmail, { color: colors.textMuted }]}>{item.profile?.email}</Text>
+                <Text style={[styles.roleText, { color: colors.textLight }, item.role === 'admin' && styles.roleTextAdmin]}>
                     {item.role.toUpperCase()}
                 </Text>
             </View>
@@ -170,7 +148,7 @@ export default function GroupDetailsScreen({ navigation, route }) {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ResponsiveScreen maxWidth={800}>
                 <View style={styles.content}>
                     <TouchableOpacity
@@ -183,9 +161,9 @@ export default function GroupDetailsScreen({ navigation, route }) {
 
                     <View style={styles.headerSection}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.groupName}>{group.name}</Text>
+                            <Text style={[styles.groupName, { color: colors.text }]}>{group.name}</Text>
                             {group.description && (
-                                <Text style={styles.groupDescription}>{group.description}</Text>
+                                <Text style={[styles.groupDescription, { color: colors.textLight }]}>{group.description}</Text>
                             )}
                         </View>
                         {isGroupAdmin && (
@@ -200,7 +178,7 @@ export default function GroupDetailsScreen({ navigation, route }) {
                         )}
                     </View>
 
-                    <Text style={styles.sectionTitle}>
+                    <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
                         Members ({members.length})
                     </Text>
 
@@ -208,10 +186,10 @@ export default function GroupDetailsScreen({ navigation, route }) {
                         <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
                     ) : members.length === 0 ? (
                         <View style={styles.emptyState}>
-                            <View style={styles.emptyIcon}>
-                                <Ionicons name="people-outline" size={48} color="#a3b1c6" />
+                            <View style={[styles.emptyIcon, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(163, 177, 198, 0.2)' }]}>
+                                <Ionicons name="people-outline" size={48} color={colors.textMuted} />
                             </View>
-                            <Text style={styles.emptyText}>No members yet</Text>
+                            <Text style={[styles.emptyText, { color: colors.textMuted }]}>No members yet</Text>
                         </View>
                     ) : (
                         <FlatList
@@ -225,52 +203,13 @@ export default function GroupDetailsScreen({ navigation, route }) {
             </ResponsiveScreen>
 
             {/* Add Member Modal */}
-            <Modal
+            <AddMemberModal
                 visible={modalVisible}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={() => setModalVisible(false)}
-            >
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Add Member</Text>
-                        <TouchableOpacity onPress={() => setModalVisible(false)}>
-                            <Text style={styles.cancelLink}>Cancel</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={{ gap: 16 }}>
-                        <View>
-                            <Text style={styles.label}>Email Address</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="user@example.com"
-                                placeholderTextColor="#a0aec0"
-                                value={searchEmail}
-                                onChangeText={setSearchEmail}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                            />
-                            <Text style={styles.inputHint}>
-                                Enter the email of a school member to add them to this group
-                            </Text>
-                        </View>
-
-                        <TouchableOpacity
-                            style={styles.submitButton}
-                            onPress={handleAddMember}
-                            disabled={searching}
-                            activeOpacity={0.8}
-                        >
-                            {searching ? (
-                                <ActivityIndicator color="white" />
-                            ) : (
-                                <Text style={styles.submitButtonText}>Add Member</Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
+                onClose={() => setModalVisible(false)}
+                schoolId={schoolId}
+                onAdd={handleAddMembers}
+                excludeIds={members.map(m => m.user_id)} // Exclude existing members
+            />
         </SafeAreaView>
     );
 }

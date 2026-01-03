@@ -8,10 +8,13 @@ import { useTheme } from '../context/ThemeContext';
 import ResponsiveScreen from '../components/ResponsiveScreen';
 import { useFocusEffect } from '@react-navigation/native';
 
+import AddMemberModal from '../components/AddMemberModal';
+
 export default function ManageGroupsScreen({ navigation, route }) {
-    const { schoolId, schoolName } = route.params;
+    const { schoolId, schoolName, role } = route.params;
     const { user } = useAuth();
     const { colors, isDarkMode } = useTheme();
+
     const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalVisible, setModalVisible] = useState(false);
@@ -19,13 +22,42 @@ export default function ManageGroupsScreen({ navigation, route }) {
     const [groupDescription, setGroupDescription] = useState('');
     const [creating, setCreating] = useState(false);
 
+    // Member Picker State
+    const [initialMembers, setInitialMembers] = useState([]);
+    const [showMemberPicker, setShowMemberPicker] = useState(false);
+    const [unreadCounts, setUnreadCounts] = useState({});
+
+    const isSchoolAdmin = role?.toLowerCase() === 'admin';
+    const canCreateGroup = ['admin', 'teacher', 'communications_officer'].includes(role?.toLowerCase());
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchGroups();
+            fetchUnreadCounts();
+        }, [schoolId])
+    );
+
     const fetchGroups = async () => {
         try {
-            const { data, error } = await supabase
-                .from('groups')
-                .select('*')
-                .eq('school_id', schoolId)
-                .order('created_at', { ascending: false });
+            let query = supabase.from('groups').select('*').eq('school_id', schoolId);
+
+            if (!isSchoolAdmin) {
+                // For non-admins, we only fetch groups they are part of
+                const { data: memberData } = await supabase
+                    .from('group_members')
+                    .select('group_id')
+                    .eq('user_id', user.id);
+
+                const groupIds = memberData?.map(m => m.group_id) || [];
+                if (groupIds.length === 0) {
+                    setGroups([]);
+                    setLoading(false);
+                    return;
+                }
+                query = query.in('id', groupIds);
+            }
+
+            const { data, error } = await query.order('created_at', { ascending: false });
 
             if (error) throw error;
             setGroups(data || []);
@@ -37,11 +69,25 @@ export default function ManageGroupsScreen({ navigation, route }) {
         }
     };
 
-    useFocusEffect(
-        useCallback(() => {
-            fetchGroups();
-        }, [schoolId])
-    );
+    const fetchUnreadCounts = async () => {
+        try {
+            const { data, error } = await supabase
+                .rpc('get_unread_group_counts', { p_user_id: user.id });
+
+            if (error) {
+                console.error('Error fetching unread counts:', error);
+                return;
+            }
+
+            const counts = {};
+            data?.forEach(item => {
+                counts[item.group_id] = item.unread_count;
+            });
+            setUnreadCounts(counts);
+        } catch (error) {
+            console.error('Error fetching unread counts:', error);
+        }
+    };
 
     const handleCreateGroup = async () => {
         if (!groupName.trim()) {
@@ -51,7 +97,8 @@ export default function ManageGroupsScreen({ navigation, route }) {
 
         setCreating(true);
         try {
-            const { data, error } = await supabase
+            // 1. Create the Group
+            const { data: groupData, error: groupError } = await supabase
                 .from('groups')
                 .insert([
                     {
@@ -64,17 +111,38 @@ export default function ManageGroupsScreen({ navigation, route }) {
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (groupError) throw groupError;
 
-            await supabase.from('group_members').insert([
-                { group_id: data.id, user_id: user.id, role: 'admin' }
-            ]);
+            // 2. Add creator as admin
+            const membersToInsert = [
+                { group_id: groupData.id, user_id: user.id, role: 'admin' }
+            ];
+
+            // 3. Add selected initial members
+            initialMembers.forEach(member => {
+                // Avoid adding creator twice if they selected themselves
+                if (member.id !== user.id) {
+                    membersToInsert.push({
+                        group_id: groupData.id,
+                        user_id: member.id,
+                        role: 'member'
+                    });
+                }
+            });
+
+            const { error: membersError } = await supabase
+                .from('group_members')
+                .insert(membersToInsert);
+
+            if (membersError) throw membersError;
 
             Alert.alert('Success', 'Group created successfully');
             setModalVisible(false);
             setGroupName('');
             setGroupDescription('');
+            setInitialMembers([]);
             fetchGroups();
+            fetchUnreadCounts();
         } catch (error) {
             Alert.alert('Error', error.message);
         } finally {
@@ -82,24 +150,39 @@ export default function ManageGroupsScreen({ navigation, route }) {
         }
     };
 
-    const renderGroupItem = ({ item }) => (
-        <TouchableOpacity
-            style={[styles.groupCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => navigation.navigate('GroupChat', { group: item, schoolId })}
-            activeOpacity={0.7}
-        >
-            <View style={[styles.groupIcon, { backgroundColor: isDarkMode ? 'rgba(0, 184, 148, 0.1)' : 'rgba(0, 184, 148, 0.15)' }]}>
-                <Ionicons name="chatbubbles-outline" size={24} color="#00b894" />
-            </View>
-            <View style={{ flex: 1 }}>
-                <Text style={[styles.groupName, { color: colors.text }]}>{item.name}</Text>
-                {item.description && (
-                    <Text style={[styles.groupDescription, { color: colors.textLight }]} numberOfLines={1}>{item.description}</Text>
+    const handleSelectMembers = (selected) => {
+        setInitialMembers(selected);
+    };
+
+    const renderGroupItem = ({ item }) => {
+        const unread = unreadCounts[item.id] || 0;
+
+        return (
+            <TouchableOpacity
+                style={[styles.groupCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => navigation.navigate('GroupChat', { group: item, schoolId })}
+                activeOpacity={0.7}
+            >
+                <View style={[styles.groupIcon, { backgroundColor: isDarkMode ? 'rgba(0, 184, 148, 0.1)' : 'rgba(0, 184, 148, 0.15)' }]}>
+                    <Ionicons name="chatbubbles-outline" size={24} color="#00b894" />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <Text style={[styles.groupName, { color: colors.text }]}>{item.name}</Text>
+                    {item.description && (
+                        <Text style={[styles.groupDescription, { color: colors.textLight }]} numberOfLines={1}>{item.description}</Text>
+                    )}
+                </View>
+
+                {unread > 0 && (
+                    <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadText}>{unread > 99 ? '99+' : unread}</Text>
+                    </View>
                 )}
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-        </TouchableOpacity>
-    );
+
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} style={{ marginLeft: 8 }} />
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -109,9 +192,11 @@ export default function ManageGroupsScreen({ navigation, route }) {
                         <Ionicons name="chevron-back" size={28} color={colors.primary} />
                     </TouchableOpacity>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>Manage Groups</Text>
-                    <TouchableOpacity onPress={() => setModalVisible(true)} style={[styles.addButtonSmall, { backgroundColor: '#00b894' }]}>
-                        <Ionicons name="add" size={24} color="#ffffff" />
-                    </TouchableOpacity>
+                    {canCreateGroup && (
+                        <TouchableOpacity onPress={() => setModalVisible(true)} style={[styles.addButtonSmall, { backgroundColor: '#00b894' }]}>
+                            <Ionicons name="add" size={24} color="#ffffff" />
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 <View style={styles.content}>
@@ -179,6 +264,23 @@ export default function ManageGroupsScreen({ navigation, route }) {
                             />
                         </View>
 
+                        <View>
+                            <Text style={[styles.label, { color: colors.text }]}>Initial Members</Text>
+                            <TouchableOpacity
+                                style={[styles.pickerButton, { borderColor: colors.border, backgroundColor: colors.input }]}
+                                onPress={() => setShowMemberPicker(true)}
+                            >
+                                <Ionicons name="people-outline" size={20} color={colors.textMuted} style={{ marginRight: 8 }} />
+                                <Text style={{ color: initialMembers.length > 0 ? colors.text : colors.textMuted, flex: 1 }}>
+                                    {initialMembers.length > 0
+                                        ? `${initialMembers.length} member${initialMembers.length > 1 ? 's' : ''} selected`
+                                        : 'Select members to add...'
+                                    }
+                                </Text>
+                                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                            </TouchableOpacity>
+                        </View>
+
                         <TouchableOpacity
                             style={styles.submitButton}
                             onPress={handleCreateGroup}
@@ -194,6 +296,16 @@ export default function ManageGroupsScreen({ navigation, route }) {
                     </View>
                 </View>
             </Modal>
+
+            {/* Member Picker Modal */}
+            <AddMemberModal
+                visible={showMemberPicker}
+                onClose={() => setShowMemberPicker(false)}
+                schoolId={schoolId}
+                onAdd={handleSelectMembers}
+                title="Select Initial Members"
+                excludeIds={[user.id]} // Exclude self
+            />
         </SafeAreaView>
     );
 }
@@ -332,5 +444,28 @@ const styles = StyleSheet.create({
         color: '#ffffff',
         fontSize: 17,
         fontWeight: '700',
+    },
+    pickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+    },
+    unreadBadge: {
+        backgroundColor: '#ff4757',
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        minWidth: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 8,
+    },
+    unreadText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 'bold',
     },
 });

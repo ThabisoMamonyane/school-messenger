@@ -38,7 +38,8 @@ export default function HomeScreen({ navigation, route }) {
                         id,
                         name,
                         address,
-                        province
+                        province,
+                        avatar_url
                     )
                 `)
                 .eq('user_id', user.id);

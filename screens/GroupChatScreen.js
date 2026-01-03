@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import ResponsiveScreen from '../components/ResponsiveScreen';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -11,6 +12,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 export default function GroupChatScreen({ navigation, route }) {
     const { group, schoolId } = route.params;
     const { user } = useAuth();
+    const { colors, isDarkMode } = useTheme();
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
@@ -22,6 +24,7 @@ export default function GroupChatScreen({ navigation, route }) {
     useEffect(() => {
         fetchMembers();
         fetchMessages();
+        markAsRead();
 
         const channel = supabase
             .channel(`group_chat:${group.id}`)
@@ -35,6 +38,9 @@ export default function GroupChatScreen({ navigation, route }) {
                 },
                 (payload) => {
                     fetchNewMessage(payload.new.id);
+                    // Optionally mark as read if user is validly "looking" at the screen,
+                    // but usually only on explicit open or tap.
+                    // For now, simple "enter screen" mark read is good. 
                 }
             )
             .subscribe();
@@ -43,6 +49,18 @@ export default function GroupChatScreen({ navigation, route }) {
             supabase.removeChannel(channel);
         };
     }, [group.id]);
+
+    const markAsRead = async () => {
+        try {
+            await supabase
+                .from('group_members')
+                .update({ last_read_at: new Date().toISOString() })
+                .eq('group_id', group.id)
+                .eq('user_id', user.id);
+        } catch (error) {
+            console.error('Error marking as read:', error);
+        }
+    };
 
     const fetchMembers = async () => {
         try {
@@ -215,7 +233,40 @@ export default function GroupChatScreen({ navigation, route }) {
         return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext);
     };
 
-    const renderMessage = ({ item }) => {
+    // Helper function to format date for separators
+    const formatDateLabel = (dateString) => {
+        const date = new Date(dateString);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        // Check if same day
+        const isSameDay = (d1, d2) =>
+            d1.getDate() === d2.getDate() &&
+            d1.getMonth() === d2.getMonth() &&
+            d1.getFullYear() === d2.getFullYear();
+
+        if (isSameDay(date, today)) {
+            return 'Today';
+        } else if (isSameDay(date, yesterday)) {
+            return 'Yesterday';
+        } else {
+            return date.toLocaleDateString(undefined, {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+    };
+
+    // Helper to get just the date part (without time)
+    const getDateKey = (dateString) => {
+        const date = new Date(dateString);
+        return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    };
+
+    const renderMessage = ({ item, index }) => {
         const isMe = item.sender_id === user.id;
         const hasAttachment = item.attachment_url;
         const isImage = hasAttachment && isImageFile(item.attachment_name);
@@ -225,62 +276,97 @@ export default function GroupChatScreen({ navigation, route }) {
         const senderName = senderProfile?.full_name || 'Unknown User';
         const senderAvatar = senderProfile?.avatar_url;
 
+        // Determine if we need to show a date separator
+        const showDateSeparator = index === 0 ||
+            getDateKey(item.created_at) !== getDateKey(messages[index - 1].created_at);
+
         return (
-            <View style={[styles.messageRow, isMe && styles.messageRowMe]}>
-                {!isMe && (
-                    <View style={styles.avatar}>
-                        {senderAvatar ? (
-                            <Image source={{ uri: senderAvatar }} style={{ width: '100%', height: '100%' }} />
-                        ) : (
-                            <Text style={styles.avatarText}>
-                                {senderName.charAt(0) || '?'}
-                            </Text>
-                        )}
+            <>
+                {showDateSeparator && (
+                    <View style={styles.dateSeparator}>
+                        <View style={[styles.dateSeparatorLine, { backgroundColor: colors.border }]} />
+                        <Text style={[styles.dateSeparatorText, {
+                            color: colors.textMuted,
+                            backgroundColor: colors.background
+                        }]}>
+                            {formatDateLabel(item.created_at)}
+                        </Text>
+                        <View style={[styles.dateSeparatorLine, { backgroundColor: colors.border }]} />
                     </View>
                 )}
-                <View style={[styles.messageBubble, isMe ? styles.messageBubbleMe : styles.messageBubbleOther]}>
+                <View style={[styles.messageRow, isMe && styles.messageRowMe]}>
                     {!isMe && (
-                        <Text style={styles.senderName}>{senderName}</Text>
-                    )}
-
-                    {hasAttachment && (
-                        <TouchableOpacity
-                            onPress={() => Linking.openURL(item.attachment_url)}
-                            style={{ marginBottom: 6 }}
-                        >
-                            {isImage ? (
-                                <Image
-                                    source={{ uri: item.attachment_url }}
-                                    style={styles.attachmentImage}
-                                    resizeMode="cover"
-                                />
+                        <View style={[styles.avatar, { backgroundColor: isDarkMode ? 'rgba(74, 144, 217, 0.2)' : 'rgba(163, 177, 198, 0.3)' }]}>
+                            {senderAvatar ? (
+                                <Image source={{ uri: senderAvatar }} style={{ width: '100%', height: '100%' }} />
                             ) : (
-                                <View style={[styles.attachmentFile, isMe && styles.attachmentFileMe]}>
-                                    <Ionicons name="document-outline" size={18} color={isMe ? 'white' : '#4a5568'} />
-                                    <Text style={[styles.attachmentFileName, isMe && styles.attachmentFileNameMe]} numberOfLines={1}>
-                                        {item.attachment_name || 'Attachment'}
-                                    </Text>
-                                </View>
+                                <Text style={[styles.avatarText, { color: isDarkMode ? '#4a90d9' : '#718096' }]}>
+                                    {senderName.charAt(0) || '?'}
+                                </Text>
                             )}
-                        </TouchableOpacity>
+                        </View>
                     )}
+                    <View style={[
+                        styles.messageBubble,
+                        isMe ? styles.messageBubbleMe : [styles.messageBubbleOther, {
+                            backgroundColor: isDarkMode ? '#2d3748' : 'rgba(255, 255, 255, 0.8)',
+                            borderColor: colors.border
+                        }]
+                    ]}>
+                        {!isMe && (
+                            <Text style={[styles.senderName, { color: colors.textLight }]}>{senderName}</Text>
+                        )}
 
-                    {item.content && (
-                        <Text style={[styles.messageText, isMe && styles.messageTextMe]}>
-                            {item.content}
+                        {hasAttachment && (
+                            <TouchableOpacity
+                                onPress={() => Linking.openURL(item.attachment_url)}
+                                style={{ marginBottom: 6 }}
+                            >
+                                {isImage ? (
+                                    <Image
+                                        source={{ uri: item.attachment_url }}
+                                        style={styles.attachmentImage}
+                                        resizeMode="cover"
+                                    />
+                                ) : (
+                                    <View style={[
+                                        styles.attachmentFile,
+                                        isMe ? styles.attachmentFileMe : {
+                                            backgroundColor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(163, 177, 198, 0.2)'
+                                        }
+                                    ]}>
+                                        <Ionicons name="document-outline" size={18} color={isMe ? 'white' : colors.textMuted} />
+                                        <Text style={[
+                                            styles.attachmentFileName,
+                                            isMe ? styles.attachmentFileNameMe : { color: colors.text }
+                                        ]} numberOfLines={1}>
+                                            {item.attachment_name || 'Attachment'}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        )}
+
+                        {item.content && (
+                            <Text style={[
+                                styles.messageText,
+                                isMe ? styles.messageTextMe : { color: colors.text }
+                            ]}>
+                                {item.content}
+                            </Text>
+                        )}
+
+                        <Text style={[styles.messageTime, isMe ? styles.messageTimeMe : { color: colors.textLight }]}>
+                            {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
-                    )}
-
-                    <Text style={[styles.messageTime, isMe && styles.messageTimeMe]}>
-                        {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
+                    </View>
                 </View>
-            </View>
+            </>
         );
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
             <ResponsiveScreen maxWidth={800}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
@@ -288,14 +374,17 @@ export default function GroupChatScreen({ navigation, route }) {
                     style={{ flex: 1 }}
                 >
                     {/* Header */}
-                    <View style={styles.header}>
+                    <View style={[styles.header, {
+                        backgroundColor: isDarkMode ? colors.surface : 'rgba(255, 255, 255, 0.85)',
+                        borderBottomColor: colors.border
+                    }]}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                             <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12 }}>
                                 <Ionicons name="chevron-back" size={28} color="#4a90d9" />
                             </TouchableOpacity>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.headerTitle} numberOfLines={1}>{group.name}</Text>
-                                <Text style={styles.headerSubtitle}>{messages.length} messages</Text>
+                                <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{group.name}</Text>
+                                <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>{messages.length} messages</Text>
                             </View>
                         </View>
                         <TouchableOpacity
@@ -307,7 +396,7 @@ export default function GroupChatScreen({ navigation, route }) {
                     </View>
 
                     {/* Messages List */}
-                    <View style={styles.messagesContainer}>
+                    <View style={[styles.messagesContainer, { backgroundColor: colors.background }]}>
                         {loading ? (
                             <ActivityIndicator size="large" color="#4a90d9" style={{ marginTop: 40 }} />
                         ) : (
@@ -325,9 +414,12 @@ export default function GroupChatScreen({ navigation, route }) {
 
                     {/* Attachment Preview */}
                     {attachment && (
-                        <View style={styles.attachmentPreview}>
+                        <View style={[styles.attachmentPreview, {
+                            backgroundColor: isDarkMode ? colors.surface : 'rgba(255, 255, 255, 0.8)',
+                            borderTopColor: colors.border
+                        }]}>
                             <Ionicons name="document-outline" size={20} color="#4a90d9" />
-                            <Text style={styles.attachmentPreviewText} numberOfLines={1}>{attachment.name}</Text>
+                            <Text style={[styles.attachmentPreviewText, { color: colors.text }]} numberOfLines={1}>{attachment.name}</Text>
                             <TouchableOpacity onPress={() => setAttachment(null)}>
                                 <Ionicons name="close-circle" size={24} color="#ff6b6b" />
                             </TouchableOpacity>
@@ -335,14 +427,20 @@ export default function GroupChatScreen({ navigation, route }) {
                     )}
 
                     {/* Input Area */}
-                    <View style={styles.inputArea}>
+                    <View style={[styles.inputArea, {
+                        backgroundColor: isDarkMode ? colors.surface : 'rgba(255, 255, 255, 0.9)',
+                        borderTopColor: colors.border
+                    }]}>
                         <TouchableOpacity onPress={pickDocument} style={{ marginRight: 8, padding: 6 }}>
                             <Ionicons name="attach" size={24} color="#4a90d9" />
                         </TouchableOpacity>
                         <TextInput
-                            style={styles.textInput}
+                            style={[styles.textInput, {
+                                backgroundColor: colors.input,
+                                color: colors.text
+                            }]}
                             placeholder="Type a message..."
-                            placeholderTextColor="#a0aec0"
+                            placeholderTextColor={colors.textMuted}
                             value={newMessage}
                             onChangeText={setNewMessage}
                             multiline
@@ -352,6 +450,7 @@ export default function GroupChatScreen({ navigation, route }) {
                             disabled={(!newMessage.trim() && !attachment) || uploading}
                             style={[
                                 styles.sendButton,
+                                { backgroundColor: (newMessage.trim() || attachment) && !uploading ? '#4a90d9' : (isDarkMode ? '#333' : 'rgba(163, 177, 198, 0.4)') },
                                 ((newMessage.trim() || attachment) && !uploading) && styles.sendButtonActive
                             ]}
                         >
@@ -528,5 +627,26 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 4,
+    },
+    dateSeparator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 16,
+        paddingHorizontal: 8,
+    },
+    dateSeparatorLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: 'rgba(163, 177, 198, 0.4)',
+    },
+    dateSeparatorText: {
+        marginHorizontal: 12,
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#718096',
+        backgroundColor: '#e8eef5',
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
     },
 });
