@@ -9,6 +9,13 @@ import { supabase } from '../lib/supabase';
 import { useFocusEffect } from '@react-navigation/native';
 import ResponsiveScreen from '../components/ResponsiveScreen';
 
+const formatDateToYYYYMMDD = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 export default function SchoolCalendarScreen({ route, navigation }) {
     const { school, role } = route.params;
     const { user } = useAuth();
@@ -76,8 +83,14 @@ export default function SchoolCalendarScreen({ route, navigation }) {
     };
 
     const getEventsForDate = (date) => {
-        const dateStr = date.toISOString().split('T')[0];
-        return events.filter(e => e.event_date === dateStr);
+        const dateStr = formatDateToYYYYMMDD(date);
+        return events.filter(e => {
+            if (e.event_date === dateStr) return true;
+            if (e.end_date) {
+                return dateStr >= e.event_date && dateStr <= e.end_date;
+            }
+            return false;
+        });
     };
 
     const hasEvents = (date) => {
@@ -98,7 +111,7 @@ export default function SchoolCalendarScreen({ route, navigation }) {
         setEditingEvent(null);
         setEventTitle('');
         setEventDescription('');
-        setEventDate(selectedDate.toISOString().split('T')[0]);
+        setEventDate(formatDateToYYYYMMDD(selectedDate));
         setEventStartTime('');
         setEventEndTime('');
         setModalVisible(true);
@@ -240,7 +253,7 @@ export default function SchoolCalendarScreen({ route, navigation }) {
                         isSelected && { backgroundColor: '#4a90d9' },
                         isToday && !isSelected && { borderWidth: 2, borderColor: '#4a90d9' },
                         !isSelected && isPublicHoliday && { backgroundColor: 'rgba(16, 185, 129, 0.15)' },
-                        !isSelected && isSchoolHoliday && { backgroundColor: 'rgba(245, 158, 11, 0.15)' }
+                        !isSelected && dayEvents.some(e => e.type === 'school_holiday' && e.end_date) && { backgroundColor: 'rgba(245, 158, 11, 0.15)' }
                     ]}>
                         <Text style={[
                             styles.dayText,

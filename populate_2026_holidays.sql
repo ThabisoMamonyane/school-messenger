@@ -25,15 +25,22 @@ INSERT INTO school_events (title, event_date, type, is_all_schools, created_by) 
 
 -- 2. Insert School Holidays / Term Dates 2026 (Global/Universal)
 INSERT INTO school_events (title, description, event_date, type, is_all_schools, created_by) VALUES
-('School Opens (Term 1)', 'Learners return to school', '2026-01-14', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
-('School Closes (Term 1)', 'End of Term 1', '2026-03-27', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
-('School Opens (Term 2)', 'Learners return to school', '2026-04-08', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
-('School Closes (Term 2)', 'End of Term 2', '2026-06-26', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
-('Special School Holiday', 'Bridge holiday', '2026-06-15', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
-('School Opens (Term 3)', 'Learners return to school', '2026-07-21', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
-('School Closes (Term 3)', 'End of Term 3', '2026-09-23', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
-('School Opens (Term 4)', 'Learners return to school', '2026-10-06', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
-('School Closes (Term 4)', 'End of Term 4', '2026-12-09', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1));
+('School Opens (Learners)', 'Term 1 starts', '2026-01-14', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
+('School Closes', 'End of Term 1', '2026-03-27', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
+('School Opens (Learners)', 'Term 2 starts', '2026-04-08', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
+('School Closes', 'End of Term 2', '2026-06-26', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
+('School Opens (Learners)', 'Term 3 starts', '2026-07-21', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
+('School Closes', 'End of Term 3', '2026-09-23', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
+('School Opens (Learners)', 'Term 4 starts', '2026-10-06', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
+('School Closes', 'End of Term 4', '2026-12-09', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1));
+
+-- 3. Insert School Holiday Periods (Ranges for Shading)
+-- These use the end_date column to cover the entire break period
+INSERT INTO school_events (title, description, event_date, end_date, type, is_all_schools, created_by) VALUES
+('School Holiday', 'Term 1 Break', '2026-03-28', '2026-04-07', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
+('School Holiday', 'Term 2 Break', '2026-06-27', '2026-07-20', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
+('School Holiday', 'Term 3 Break', '2026-09-24', '2026-10-05', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1)),
+('School Holiday', 'Term 4 Break', '2026-12-10', '2026-12-31', 'school_holiday', true, (SELECT id FROM auth.users LIMIT 1));
 
 -- =============================================
 -- DATA INSERTION COMPLETE

@@ -16,6 +16,13 @@ const Icons = {
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+const formatDateToYYYYMMDD = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 // Vibrant colors for events
 const EVENT_COLORS = [
     { bg: '#3b82f6', text: '#fff' }, // Blue
@@ -107,8 +114,14 @@ function CalendarContent() {
     }, [currentMonth]);
 
     const selectedDayEvents = useMemo(() => {
-        const dateStr = selectedDate.toISOString().split('T')[0];
-        return events.filter(e => e.event_date === dateStr);
+        const dateStr = formatDateToYYYYMMDD(selectedDate);
+        return events.filter(e => {
+            if (e.event_date === dateStr) return true;
+            if (e.end_date) {
+                return dateStr >= e.event_date && dateStr <= e.end_date;
+            }
+            return false;
+        });
     }, [events, selectedDate]);
 
     const handleMonthChange = (dir: number) => {
@@ -119,7 +132,7 @@ function CalendarContent() {
         e.preventDefault();
         if (!title || !selectedSchool) return;
 
-        const dateStr = selectedDate.toISOString().split('T')[0];
+        const dateStr = formatDateToYYYYMMDD(selectedDate);
 
         const { data, error } = await supabase.from('school_events').insert({
             school_id: selectedSchool.id,
@@ -180,8 +193,14 @@ function CalendarContent() {
                     {daysInMonth.map((date, i) => {
                         if (!date) return <div key={i} className={styles.emptyCell} />;
 
-                        const dateStr = date.toISOString().split('T')[0];
-                        const dayEvents = events.filter(e => e.event_date === dateStr);
+                        const dateStr = formatDateToYYYYMMDD(date);
+                        const dayEvents = events.filter(e => {
+                            if (e.event_date === dateStr) return true;
+                            if (e.end_date) {
+                                return dateStr >= e.event_date && dateStr <= e.end_date;
+                            }
+                            return false;
+                        });
                         const isPublic = dayEvents.some(e => e.type === 'public_holiday');
                         const isSchool = dayEvents.some(e => e.type === 'school_holiday');
 
@@ -190,7 +209,7 @@ function CalendarContent() {
                                 key={i}
                                 className={`${styles.dayCell} ${isToday(date) ? styles.today : ''} ${isSelected(date) ? styles.selected : ''}`}
                                 style={{
-                                    backgroundColor: isSelected(date) ? undefined : (isPublic ? '#ecfdf5' : isSchool ? '#fffbeb' : undefined)
+                                    backgroundColor: isSelected(date) ? undefined : (isPublic ? '#ecfdf5' : (isSchool && dayEvents.some(e => e.type === 'school_holiday' && e.end_date)) ? '#fffbeb' : undefined)
                                 }}
                                 onClick={() => setSelectedDate(date)}
                             >
